@@ -20,17 +20,17 @@ class TitleScreen {
 
         // Title
         g.setColor(Color.WHITE);
-        g.setFont(FontCustom.PressStart2P.deriveFont(28f));
+        g.setFont(FontCustom.PressStart2P.deriveFont(32f));
         drawCenteredString(g, "Turn-Based RPG", gp.vw / 2, gp.vh / 3);
 
         // Subtitle
-        g.setFont(new Font("SansSerif", Font.PLAIN, 24));
+        g.setFont(FontCustom.PressStart2P.deriveFont(20f));
         drawCenteredString(g, "Press ENTER to Start", gp.vw / 2, gp.vh / 2);
 
         // Instructions
-        g.setFont(new Font("Monospaced", Font.PLAIN, 14));
+        g.setFont(FontCustom.PressStart2P.deriveFont(16f));
         g.setColor(Color.LIGHT_GRAY);
-        drawCenteredString(g, "Fixed & Enhanced Edition", gp.vw / 2, gp.vh * 3 / 4);
+        drawCenteredString(g, "Demo Edition", gp.vw / 2, gp.vh * 3 / 4);
     }
 
     void drawCenteredString(Graphics2D g, String s, int cx, int cy) {
