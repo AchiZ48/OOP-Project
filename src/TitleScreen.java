@@ -20,9 +20,9 @@ class TitleScreen {
         }
     }
 
-//    void update(double dt) {
-//        // Could add title screen animations here
-//    }
+    void update(double dt) {
+        // Could add title screen animations here
+    }
 
     void draw(Graphics2D g) {
         // Background gradient
