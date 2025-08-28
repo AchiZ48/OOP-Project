@@ -144,10 +144,10 @@ class Player extends Entity {
         top = Math.max(0, top);
 
         // Check the four corners of the player hitbox
-        return !map.isSolidAtPixel(left, top) &&           // top-left
-                !map.isSolidAtPixel(right, top) &&          // top-right
-                !map.isSolidAtPixel(left, bottom) &&        // bottom-left
-                !map.isSolidAtPixel(right, bottom);         // bottom-right
+        return map.isSolidAtPixel(left, top) &&           // top-left
+                map.isSolidAtPixel(right, top) &&          // top-right
+                map.isSolidAtPixel(left, bottom) &&        // bottom-left
+                map.isSolidAtPixel(right, bottom);         // bottom-right
     }
 
     @Override
