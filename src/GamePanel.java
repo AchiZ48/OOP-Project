@@ -10,12 +10,14 @@ import java.util.List;
 
 public class GamePanel extends JPanel {
     final int vw, vh;
-    BufferedImage backBuffer;
+    BufferedImage worldBackBuffer;
+    BufferedImage HUDBackBuffer;
     TileMap map;
     Camera camera;
     List<Player> party;
     Enemy demoEnemy;
     int activeIndex = 0;
+    int zoom = 2;
 
     enum State { TITLE, SAVE_MENU, WORLD, BATTLE }
     State state = State.TITLE;
@@ -33,10 +35,11 @@ public class GamePanel extends JPanel {
     public GamePanel(int virtualWidth, int virtualHeight) {
         this.vw = virtualWidth;
         this.vh = virtualHeight;
-        setBackground(Color.BLACK);
+        setBackground(Color.RED);
         setFocusable(true);
         FontCustom.loadFonts();
-        backBuffer = new BufferedImage(vw, vh, BufferedImage.TYPE_INT_ARGB);
+        worldBackBuffer = new BufferedImage(vw/zoom, vh/zoom, BufferedImage.TYPE_INT_ARGB);
+        HUDBackBuffer = new BufferedImage(vw, vh, BufferedImage.TYPE_INT_ARGB);
         input = new InputManager(this);
 
         // Load tilemap with better error handling
@@ -45,7 +48,6 @@ public class GamePanel extends JPanel {
             System.out.println("TMX map loaded successfully");
         } catch (Exception e) {
             System.out.println("TMX load failed (using placeholder): " + e.getMessage());
-            map = TileMap.generatePlaceholder(50, 30, 16, 16);
         }
 
         camera = new Camera(vw, vh, map);
@@ -64,9 +66,9 @@ public class GamePanel extends JPanel {
 
     void createDefaultParty() {
         party = new ArrayList<>();
-        party.add(Player.createSample("Alice", 64, 64));
-        party.add(Player.createSample("Bob", 96, 64));
-        party.add(Player.createSample("Cleo", 128, 64));
+        party.add(Player.createSample("Bluu", 64, 64));
+        party.add(Player.createSample("Souri", 96, 64));
+        party.add(Player.createSample("Ferryman", 128, 64));
         activeIndex = 0;
         if (camera != null) {
             camera.followEntity(party.get(activeIndex));
@@ -106,6 +108,35 @@ public class GamePanel extends JPanel {
         input.bindKey("ESC", () -> {
             if (state != State.TITLE) {
                 state = State.TITLE;
+            }
+        });
+
+        // NEW ZOOM CONTROLS
+        input.bindKey("PLUS", () -> {
+            if (state == State.WORLD && camera != null) {
+                camera.zoomIn();
+                System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
+            }
+        });
+
+        input.bindKey("EQUALS", () -> {  // For keyboards where + requires shift
+            if (state == State.WORLD && camera != null) {
+                camera.zoomIn();
+                System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
+            }
+        });
+
+        input.bindKey("MINUS", () -> {
+            if (state == State.WORLD && camera != null) {
+                camera.zoomOut();
+                System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
+            }
+        });
+
+        input.bindKey("0", () -> {
+            if (state == State.WORLD && camera != null) {
+                camera.resetZoom();
+                System.out.println("Zoom reset to 1.0");
             }
         });
     }
@@ -275,38 +306,49 @@ public class GamePanel extends JPanel {
     protected void paintComponent(Graphics g0) {
         super.paintComponent(g0);
 
-        // Clear back buffer
-        Graphics2D gbb = backBuffer.createGraphics();
-        gbb.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-        gbb.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-        gbb.setColor(new Color(0x2b2b2b));
-        gbb.fillRect(0, 0, vw, vh);
+        // --- World back buffer ---
+        Graphics2D gWorld = worldBackBuffer.createGraphics();
+        gWorld.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        gWorld.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        gWorld.setColor(new Color(0x2b2b2b));
+        gWorld.fillRect(0, 0, worldBackBuffer.getWidth(), worldBackBuffer.getHeight());
 
-        // Render current state
+        // --- HUD / UI back buffer ---
+        Graphics2D gUI = HUDBackBuffer.createGraphics();
+        gUI.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        gUI.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+
+        // --- เคลียร์ HUDBackBuffer ทุกครั้งก่อนวาดใหม่ ---
+        gUI.setComposite(AlphaComposite.Clear);
+        gUI.fillRect(0, 0, HUDBackBuffer.getWidth(), HUDBackBuffer.getHeight());
+        gUI.setComposite(AlphaComposite.SrcOver);
+
         try {
             switch (state) {
                 case TITLE:
-                    titleScreen.draw(gbb);
+                    titleScreen.draw(gUI);
                     break;
                 case SAVE_MENU:
-                    saveMenu.draw(gbb);
+                    saveMenu.draw(gUI);
                     break;
                 case WORLD:
-                    drawWorld(gbb);
+                    drawWorld(gWorld);   // world ลง backBuffer
+                    drawHUD(gUI);        // HUD overlay ลง HUDBackBuffer
                     break;
                 case BATTLE:
-                    battleScreen.draw(gbb);
+                    battleScreen.draw(gUI);
                     break;
             }
         } catch (Exception e) {
-            // Fallback rendering
-            gbb.setColor(Color.RED);
-            gbb.drawString("Render Error: " + e.getMessage(), 10, 30);
+            Graphics2D gError = (state == State.WORLD) ? gWorld : gUI;
+            gError.setColor(Color.RED);
+            gError.drawString("Render Error: " + e.getMessage(), 10, 30);
         }
 
-        gbb.dispose();
+        gWorld.dispose();
+        gUI.dispose();
 
-        // Scale and draw to screen
+        // --- Compose final screen ---
         Graphics2D g2 = (Graphics2D) g0;
         int pw = getWidth(), ph = getHeight();
         double sx = (double) pw / vw, sy = (double) ph / vh;
@@ -316,11 +358,19 @@ public class GamePanel extends JPanel {
 
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+
         g2.setColor(Color.BLACK);
         g2.fillRect(0, 0, pw, ph);
-        g2.drawImage(backBuffer, ox, oy, drawW, drawH, null);
 
-        // Draw letterboxing
+        // Draw WORLD if applicable
+        if (state == State.WORLD) {
+            g2.drawImage(worldBackBuffer, ox, oy, drawW, drawH, null);
+        }
+
+        // Draw UI overlay (HUD for WORLD, UI for TITLE/SAVE/BATTLE)
+        g2.drawImage(HUDBackBuffer, 0, 0, pw, ph, null);
+
+        // Letterbox
         g2.setColor(new Color(0, 0, 0, 120));
         if (ox > 0) {
             g2.fillRect(0, 0, ox, ph);
@@ -330,6 +380,11 @@ public class GamePanel extends JPanel {
             g2.fillRect(0, ph - oy, pw, oy);
         }
     }
+
+
+
+
+
 
     void drawWorld(Graphics2D g) {
         // Draw tilemap
@@ -355,8 +410,6 @@ public class GamePanel extends JPanel {
             }
         }
 
-        // Draw HUD
-        drawHUD(g);
     }
 
 
@@ -364,27 +417,29 @@ public class GamePanel extends JPanel {
     void drawHUD(Graphics2D g) {
         if (party == null || party.isEmpty()) return;
 
-
-
         // HUD background
         g.setColor(new Color(0, 0, 0, 160));
-        g.fillRoundRect(8, 8, 300, 110, 8, 8);
+        g.fillRoundRect(25, 285, 155, 65, 8, 8);
 
         // HUD content
         g.setColor(Color.WHITE);
-        g.setFont(FontCustom.PressStart2P);
+        g.setFont(FontCustom.PressStart2P.deriveFont(7f));
 
         for (int i = 0; i < party.size(); i++) {
             Player p = party.get(i);
-            int y0 = 24 + i * 22;
+            int y0 = 300 + i * 20;
             String prefix = (i == activeIndex) ? "> " : "  ";
             String info = String.format("%s%s LV%d HP:%d/%d",
                     prefix, p.name, p.level, p.hp, p.maxHp);
             g.drawString(info, 16, y0);
         }
 
-        g.setColor(Color.LIGHT_GRAY);
-        g.setFont(FontCustom.PressStart2P.deriveFont(8f));
-        g.drawString("Controls: 1/2/3=Switch | B=Battle | Enter=Menu", 16, 100);
+        // Show zoom level
+        g.setColor(Color.CYAN);
+        g.drawString(String.format("Zoom: %.2fx", camera.getZoom()), 16, 16);
+
+//        g.setColor(Color.LIGHT_GRAY);
+//        g.setFont(FontCustom.PressStart2P.deriveFont(8f));
+//        g.drawString("Controls: 1/2/3=Switch | B=Battle | +/-=Zoom | 0=Reset", 16, 120);
     }
 }
