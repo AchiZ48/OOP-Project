@@ -2,8 +2,10 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.Serial;
 
 class Player extends Entity {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     public Player(String name, SpriteAnim spr, int x, int y) {
@@ -11,8 +13,8 @@ class Player extends Entity {
         this.sprite = spr;
         this.x = x;
         this.y = y;
-        this.w = spr.frameW * spr.scale;
-        this.h = spr.frameH * spr.scale;
+        this.w = 16;
+        this.h = 32;
         this.maxHp = 30;
         this.hp = maxHp;
         this.level = 1;
@@ -25,7 +27,7 @@ class Player extends Entity {
         SpriteAnim spr;
         try {
             BufferedImage img = ImageIO.read(new File("resources/sprites/" + name.toLowerCase() + ".png"));
-            spr = new SpriteAnim(img, 16, 16, 4, 1, 4);
+            spr = new SpriteAnim(img, 16, 32, 1, 1, 4);
             System.out.println("Loaded sprite for " + name);
         } catch (Exception e) {
             // Generate procedural sprite based on name
@@ -92,24 +94,60 @@ class Player extends Entity {
             double vx = dx / len * speed;
             double vy = dy / len * speed;
 
-            // Update position
-            int newX = x + (int) Math.round(vx * dt);
-            int newY = y + (int) Math.round(vy * dt);
+            // Calculate movement deltas
+            int deltaX = (int) Math.round(vx * dt);
+            int deltaY = (int) Math.round(vy * dt);
 
-            // Bounds checking
             if (map != null) {
-                newX = Math.max(0, Math.min(map.pixelWidth - w, newX));
-                newY = Math.max(0, Math.min(map.pixelHeight - h, newY));
+                // Try horizontal movement first
+                int newX = x + deltaX;
+                if (isCollidingAt(map, newX, y)) {
+                    x = newX;
+                }
+
+                // Then try vertical movement
+                int newY = y + deltaY;
+                if (isCollidingAt(map, x, newY)) {
+                    y = newY;
+                }
+
+                // Bounds checking (prevent going outside map)
+                x = Math.max(0, Math.min(map.pixelWidth - w, x));
+                y = Math.max(0, Math.min(map.pixelHeight - h, y));
+            } else {
+                // No map collision, just move normally
+                x += deltaX;
+                y += deltaY;
             }
 
-            x = newX;
-            y = newY;
             sprite.playing = true;
         } else {
             sprite.playing = false;
         }
 
         sprite.update(dt);
+    }
+
+    // Helper method to check if player would collide at given position
+    private boolean isCollidingAt(TileMap map, int px, int py) {
+        // Add small margin to prevent edge cases
+        int margin = 1;
+
+        // Check corners with margin
+        int left = px + margin;
+        int right = px + w - margin - 1;
+        int top = py + margin;
+        int bottom = py + h - margin - 1;
+
+        // Make sure we don't check negative positions
+        left = Math.max(0, left);
+        top = Math.max(0, top);
+
+        // Check the four corners of the player hitbox
+        return !map.isSolidAtPixel(left, top) &&           // top-left
+                !map.isSolidAtPixel(right, top) &&          // top-right
+                !map.isSolidAtPixel(left, bottom) &&        // bottom-left
+                !map.isSolidAtPixel(right, bottom);         // bottom-right
     }
 
     @Override
