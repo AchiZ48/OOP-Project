@@ -1,21 +1,22 @@
 import org.w3c.dom.*;
 import javax.xml.parsers.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
-
 public class TileMap {
     int tileW, tileH, cols, rows, pixelWidth, pixelHeight;
-    int[][] layer;          // Main visual layer
-    int[][] decorationLayer; // Additional decoration layer
-    int[][] collisionLayer;  // Collision layer
+    int[][] layer;
+    int[][] decorationLayer;
+    int[][] collisionLayer;
+    int[][] zoneLayer;
     boolean decorationVisible;
-
-    // List ของ Tileset + firstGid
     List<TilesetEntry> tilesets = new ArrayList<>();
-
+    // pre-render images
+    BufferedImage groundImage;
+    BufferedImage decorationImage;
     static class TilesetEntry {
         int firstGid;
         Tileset tileset;
@@ -24,34 +25,27 @@ public class TileMap {
             this.tileset = ts;
         }
     }
-
     public TileMap() {}
-
     // ---------------- Load TMX ----------------
     public static TileMap loadFromTMX(String path) throws Exception {
         File f = new File(path);
         if (!f.exists()) throw new FileNotFoundException("TMX not found: " + path);
-
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document doc = db.parse(f);
-
         Element mapEl = (Element) doc.getElementsByTagName("map").item(0);
         int tileW = Integer.parseInt(mapEl.getAttribute("tilewidth"));
         int tileH = Integer.parseInt(mapEl.getAttribute("tileheight"));
         int width = Integer.parseInt(mapEl.getAttribute("width"));
         int height = Integer.parseInt(mapEl.getAttribute("height"));
-
         TileMap tm = new TileMap();
         tm.tileW = tileW; tm.tileH = tileH;
         tm.cols = width; tm.rows = height;
         tm.pixelWidth = width*tileW; tm.pixelHeight = height*tileH;
-
         tm.layer = new int[height][width];
         tm.decorationLayer = new int[height][width];
         tm.collisionLayer = new int[height][width];
         tm.decorationVisible = true;
-
         // ---------------- Load Tilesets ----------------
         NodeList tilesetNodes = doc.getElementsByTagName("tileset");
         for(int i=0;i<tilesetNodes.getLength();i++){
@@ -63,14 +57,12 @@ public class TileMap {
                 File tsxFile = new File(f.getParentFile(), source);
                 ts = Tileset.loadFromTSX(tsxFile.getPath(), firstGid);
             } else {
-                // Inline tileset placeholder
                 int tw = Integer.parseInt(tsEl.getAttribute("tilewidth"));
                 int th = Integer.parseInt(tsEl.getAttribute("tileheight"));
                 ts = Tileset.generatePlaceholder(tw, th);
             }
             tm.tilesets.add(new TilesetEntry(firstGid, ts));
         }
-
         // ---------------- Load layers ----------------
         NodeList layerNodes = doc.getElementsByTagName("layer");
         for(int i=0;i<layerNodes.getLength();i++){
@@ -78,10 +70,8 @@ public class TileMap {
             String name = lEl.getAttribute("name");
             String visibleAttr = lEl.getAttribute("visible");
             boolean isVisible = !visibleAttr.equals("0");
-
             Element dataEl = (Element) lEl.getElementsByTagName("data").item(0);
             String[] tokens = dataEl.getTextContent().trim().split("\\s*,\\s*");
-
             int[][] layerData = new int[height][width];
             int idx=0;
             for(int r=0;r<height;r++){
@@ -96,40 +86,45 @@ public class TileMap {
                     } else layerData[r][c]=0;
                 }
             }
-
             switch(name.toLowerCase()){
                 case "collision": tm.collisionLayer = layerData; break;
-                case "decoration": tm.decorationLayer = layerData; tm.decorationVisible = isVisible; break;
-                case "ground": default: tm.layer = layerData; break;
+                case "decoration": tm.decorationLayer = layerData; tm.decorationVisible = true; break;
+                case "ground": tm.layer = layerData; break;
+                case "zone": tm.zoneLayer = layerData; break;
+                default: tm.layer = layerData; break;
             }
         }
-
+        // ---------- Pre-render images ----------
+        tm.groundImage = tm.renderLayer(tm.layer);
+        tm.decorationImage = tm.renderLayer(tm.decorationLayer);
         return tm;
     }
-
-    // ---------------- Draw ----------------
-    public void draw(Graphics2D g, Camera cam){
-        drawLayer(g, cam, layer);
-        if(decorationLayer!=null && decorationVisible) drawLayer(g, cam, decorationLayer);
-    }
-
-    private void drawLayer(Graphics2D g, Camera cam, int[][] layerData){
-        int startCol = Math.max(0, (int)((cam.x - (double) cam.vw /2)/tileW)-1);
-        int endCol = Math.min(cols, (int)((cam.x + (double) cam.vw /2)/tileW)+2);
-        int startRow = Math.max(0, (int)((cam.y - (double) cam.vh /2)/tileH)-1);
-        int endRow = Math.min(rows, (int)((cam.y + (double) cam.vh /2)/tileH)+2);
-
-        for(int r=startRow;r<endRow;r++){
-            for(int c=startCol;c<endCol;c++){
+    // Render one layer into BufferedImage
+    private BufferedImage renderLayer(int[][] layerData){
+        if(layerData == null) return null;
+        BufferedImage img = new BufferedImage(pixelWidth, pixelHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        for(int r=0;r<rows;r++){
+            for(int c=0;c<cols;c++){
                 int gid = layerData[r][c];
                 if(gid<=0) continue;
                 int wx = c*tileW, wy=r*tileH;
-                int sx = cam.worldToScreenX(wx), sy=cam.worldToScreenY(wy);
-                drawGID(g, gid, sx, sy, tileW, tileH);
+                drawGID(g, gid, wx, wy, tileW, tileH);
             }
         }
+        g.dispose();
+        return img;
     }
+    // ---------------- Draw ----------------
+    public void draw(Graphics2D g, Camera cam){
+        if(groundImage != null){
+            g.drawImage(groundImage, 0, 0, null);
+        }
+        if(decorationImage != null && decorationVisible){
+            g.drawImage(decorationImage, 0, 0, null);
+        }
 
+    }
     private void drawGID(Graphics2D g, int gid, int x, int y, int w, int h){
         if(gid<=0) return;
         TilesetEntry entry=null;
@@ -143,76 +138,45 @@ public class TileMap {
         int localId = gid - entry.firstGid;
         entry.tileset.drawTile(g, localId, x, y, w, h);
     }
-
-    // ---------------- Depth-aware drawing with entities ----------------
-    public void drawWithDepth(Graphics2D g, Camera cam, List<Entity> entities){
-        drawLayer(g, cam, layer); // Ground first
-
-        int startCol = Math.max(0, (int)((cam.x - (double) cam.vw /2)/tileW)-1);
-        int endCol = Math.min(cols, (int)((cam.x + (double) cam.vw /2)/tileW)+2);
-        int startRow = Math.max(0, (int)((cam.y - (double) cam.vh /2)/tileH)-1);
-        int endRow = Math.min(rows, (int)((cam.y + (double) cam.vh /2)/tileH)+2);
-
-        for(int r=startRow;r<endRow;r++){
-            int currentY = r*tileH;
-
-            if(decorationLayer!=null && decorationVisible){
-                for(int c=startCol;c<endCol;c++){
-                    int gid = decorationLayer[r][c];
-                    if(gid<=0) continue;
-                    int wx = c*tileW, wy=r*tileH;
-                    int sx = cam.worldToScreenX(wx), sy=cam.worldToScreenY(wy);
-                    drawGID(g, gid, sx, sy, tileW, tileH);
-                }
-            }
-
-            if(entities!=null){
-                for(Entity e: entities){
-                    int eb = e.y+e.h;
-                    if(eb>currentY && eb <= currentY+tileH){
-                        e.draw(g, cam);
-                    }
-                }
-            }
-        }
-
-        // Draw entities below visible rows
-        if(entities!=null){
-            int belowY = endRow*tileH;
-            for(Entity e: entities){
-                if(e.y+e.h > belowY) e.draw(g, cam);
-            }
-        }
-    }
-
     // ---------------- Collision ----------------
     public boolean isSolid(int tileX, int tileY){
         if(tileX<0||tileX>=cols||tileY<0||tileY>=rows) return true;
         return collisionLayer[tileY][tileX]>0;
     }
-    public boolean isSolidAtPixel(int wx, int wy){
-        return !isSolid(wx / tileW, wy / tileH);
+    public boolean isSolidAtPixel(double wx, double wy){
+        int tileX = (int) (wx / tileW);
+        int tileY = (int) (wy / tileH);
+        return !isSolid(tileX, tileY);
     }
     public int getCollisionAt(int tileX,int tileY){
         if(tileX<0||tileX>=cols||tileY<0||tileY>=rows) return 1;
         return collisionLayer[tileY][tileX];
     }
-
-    public void drawCollisionOverlay(Graphics2D g, Camera cam, Color color){
+    public void drawCollisionOverlay(Graphics2D g, Camera cam){
         if(collisionLayer==null) return;
-
-        int startCol = Math.max(0, (int)((cam.x - (double) cam.vw /2)/tileW)-1);
-        int endCol = Math.min(cols, (int)((cam.x + (double) cam.vw /2)/tileW)+2);
-        int startRow = Math.max(0, (int)((cam.y - (double) cam.vh /2)/tileH)-1);
-        int endRow = Math.min(rows, (int)((cam.y + (double) cam.vh /2)/tileH)+2);
-
-        g.setColor(color);
-        for(int r=startRow;r<endRow;r++){
-            for(int c=startCol;c<endCol;c++){
+        g.setColor(new Color(255, 0, 0, 128));
+        for(int r=0;r<rows;r++){
+            for(int c=0;c<cols;c++){
                 if(collisionLayer[r][c]>0){
                     int wx=c*tileW, wy=r*tileH;
-                    int sx=cam.worldToScreenX(wx), sy=cam.worldToScreenY(wy);
-                    g.fillRect(sx, sy, tileW, tileH);
+                    g.fillRect(wx, wy, tileW, tileH);
+                }
+            }
+        }
+    }
+    public void drawZoneOverlay(Graphics2D g, Camera cam){
+        if(zoneLayer==null) return;
+        for(int r=0;r<rows;r++){
+            for(int c=0;c<cols;c++){
+                if(zoneLayer[r][c]>0){
+                    switch (zoneLayer[r][c]){
+                        case 1025 : g.setColor(new Color(0, 255, 16, 128)); break;
+                        case 1026 : g.setColor(new Color(0, 104, 10, 128)); break;
+                        case 1027 : g.setColor(new Color(255, 144, 0, 128)); break;
+                        case 1028 : g.setColor(new Color(0, 217, 255, 128)); break;
+                    }
+                    int wx=c*tileW, wy=r*tileH;
+                    g.fillRect(wx, wy, tileW, tileH);
                 }
             }
         }
