@@ -9,7 +9,7 @@ class SaveData implements Serializable {
     static class PlayerData implements Serializable {
         private static final long serialVersionUID = 1L;
         String name;
-        int x, y;
+        double x, y;
         int hp, maxHp, level, exp, str, def;
     }
 
