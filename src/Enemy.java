@@ -4,21 +4,21 @@ import java.awt.image.BufferedImage;
 class Enemy extends Entity {
     private static final long serialVersionUID = 1L;
 
-    public Enemy(String name, SpriteAnim spr, int x, int y) {
+    public Enemy(String name, SpriteAnim spr, double x, double y) {
         this.name = name;
         this.sprite = spr;
         this.x = x;
         this.y = y;
         this.w = spr.frameW * spr.scale;
         this.h = spr.frameH * spr.scale;
-        this.maxHp = 20;
+        this.maxHp = 200;
         this.hp = maxHp;
         this.level = 1;
         this.str = 4;
         this.def = 1;
     }
 
-    static Enemy createSample(String name, int x, int y) {
+    static Enemy createSample(String name, double x, double y) {
         BufferedImage bi = new BufferedImage(16 * 4, 16, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = bi.createGraphics();
 
