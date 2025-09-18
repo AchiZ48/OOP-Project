@@ -94,17 +94,35 @@ public class Camera {
         return zoom;
     }
 
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+    }
+
+    public double getViewWidth() {
+        return virtualVw;
+    }
+
+    public double getViewHeight() {
+        return virtualVh;
+    }
+
     public void resetZoom() {
         setTargetZoom(1.0);
     }
 
-    // Convert world coordinates to screen coordinates (no scaling, just offset)
+    // Convert world coordinates to screen coordinates (includes scaling)
     int worldToScreenX(double wx) {
-        return (int) Math.round(wx - (x - virtualVw / 2.0));
+        double camLeft = x - virtualVw / 2.0;
+        return (int) Math.floor((wx - camLeft) * zoom);
     }
 
     int worldToScreenY(double wy) {
-        return (int) Math.round(wy - (y - virtualVh / 2.0));
+        double camTop = y - virtualVh / 2.0;
+        return (int) Math.floor((wy - camTop) * zoom);
     }
 
 }
