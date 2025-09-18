@@ -32,7 +32,8 @@ class SpriteAnim implements Serializable {
 
         int srcX = (currentFrame % framesPerRow) * frameW;
         int srcY = (currentFrame / framesPerRow) * frameH;
-
+        g.setColor(Color.BLACK);
+        g.drawRect(screenX, screenY, drawW, drawH);
         g.drawImage(sheet, screenX, screenY, screenX + drawW, screenY + drawH,
                 srcX, srcY, srcX + frameW, srcY + frameH, null);
     }
