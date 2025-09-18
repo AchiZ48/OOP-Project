@@ -1,5 +1,8 @@
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -11,44 +14,76 @@ public class InputManager {
     Set<String> keysConsumed = new HashSet<>();
     Map<String, Runnable> oneShot = new HashMap<>();
 
+
     public InputManager(JPanel p) {
         this.panel = p;
+        panel.setFocusTraversalKeysEnabled(false);
         setupBindings();
+
+        // เพิ่ม KeyEventDispatcher เพื่อจับ SHIFT/CTRL/ALT
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
+            int code = e.getKeyCode();
+
+            // SHIFT
+            if (code == KeyEvent.VK_SHIFT) {
+                if (e.getID() == KeyEvent.KEY_PRESSED) {
+                    keysPressed.add("SHIFT");
+                } else if (e.getID() == KeyEvent.KEY_RELEASED) {
+                    keysPressed.remove("SHIFT");
+                    keysConsumed.remove("SHIFT");
+                }
+            }
+
+            // ถ้าอยากจับ CTRL / ALT ด้วยก็เพิ่มแบบเดียวกัน
+            return false; // ส่งต่อ event ไป component อื่นด้วย
+        });
     }
 
     void setupBindings() {
         // Movement keys
-        registerKey("LEFT", "LEFT");
-        registerKey("RIGHT", "RIGHT");
-        registerKey("UP", "UP");
-        registerKey("DOWN", "DOWN");
+        registerKey(KeyEvent.VK_A, "LEFT");
+        registerKey(KeyEvent.VK_D, "RIGHT");
+        registerKey(KeyEvent.VK_W, "UP");
+        registerKey(KeyEvent.VK_S, "DOWN");
+        registerKey(KeyEvent.VK_SHIFT, "SHIFT");
 
         // Number keys
-        registerKey("1", "1");
-        registerKey("2", "2");
-        registerKey("3", "3");
+        registerKey(KeyEvent.VK_1, "1");
+        registerKey(KeyEvent.VK_2, "2");
+        registerKey(KeyEvent.VK_3, "3");
 
         // Action keys
-        registerKey("N", "N");
-        registerKey("L", "L");
-        registerKey("D", "D");
-        registerKey("B", "B");
+        registerKey(KeyEvent.VK_B, "B");
+        registerKey(KeyEvent.VK_P, "P");
+        registerKey(KeyEvent.VK_EQUALS, "EQUALS");
+        registerKey(KeyEvent.VK_MINUS, "MINUS");
+        registerKey(KeyEvent.VK_0, "0");
 
         // Control keys
-        registerKey("ENTER", "ENTER");
-        registerKey("ESCAPE", "ESC");
+        registerKey(KeyEvent.VK_ENTER, "ENTER");
+        registerKey(KeyEvent.VK_ESCAPE, "ESC");
+        registerKey(KeyEvent.VK_SPACE, "SPACE");
+        registerKey(KeyEvent.VK_E, "E");
+        registerKey(KeyEvent.VK_MULTIPLY, "*");
     }
 
-    void registerKey(String keyStroke, String name) {
+    void registerKey(int keyStroke, String name) {
         InputMap im = panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap am = panel.getActionMap();
 
-        im.put(KeyStroke.getKeyStroke(keyStroke), "pressed_" + name);
-        im.put(KeyStroke.getKeyStroke("released " + keyStroke), "released_" + name);
+        // press
+        im.put(KeyStroke.getKeyStroke(keyStroke, 0, false), "pressed_" + name);
+        // release
+        im.put(KeyStroke.getKeyStroke(keyStroke, 0, true), "released_" + name);
+        im.put(KeyStroke.getKeyStroke(keyStroke, InputEvent.SHIFT_DOWN_MASK, false), "pressed_" + name);
+        im.put(KeyStroke.getKeyStroke(keyStroke, InputEvent.SHIFT_DOWN_MASK, true), "released_" + name);
 
         am.put("pressed_" + name, new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
                 keysPressed.add(name);
+                // run oneShot ถ้ามี bind ไว้
+                Runnable r = oneShot.remove(name);
+                if (r != null) r.run();
             }
         });
 
@@ -56,8 +91,6 @@ public class InputManager {
             public void actionPerformed(ActionEvent e) {
                 keysPressed.remove(name);
                 keysConsumed.remove(name);
-                Runnable r = oneShot.remove(name);
-                if (r != null) r.run();
             }
         });
     }
@@ -67,7 +100,7 @@ public class InputManager {
     }
 
     public void update() {
-        // Clear consumed keys that are no longer pressed
+        // Clear consumed keys ที่ไม่ถูกกดแล้ว
         keysConsumed.retainAll(keysPressed);
     }
 
