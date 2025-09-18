@@ -1,6 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.geom.AffineTransform;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -17,8 +18,8 @@ public class GamePanel extends JPanel {
     List<Player> party;
     Enemy demoEnemy;
     int activeIndex = 0;
-    int zoom = 2;
-
+    boolean debugMode = false;
+    boolean showPauseOverlay = false;
     enum State { TITLE, SAVE_MENU, WORLD, BATTLE }
     State state = State.TITLE;
 
@@ -29,7 +30,7 @@ public class GamePanel extends JPanel {
     InputManager input;
     Thread gameThread;
     volatile boolean running = false;
-    final double LOGIC_FPS = 60.0;
+    final double LOGIC_FPS = 120;
     final double LOGIC_DT = 1.0/LOGIC_FPS;
 
     public GamePanel(int virtualWidth, int virtualHeight) {
@@ -38,7 +39,7 @@ public class GamePanel extends JPanel {
         setBackground(Color.RED);
         setFocusable(true);
         FontCustom.loadFonts();
-        worldBackBuffer = new BufferedImage(vw/zoom, vh/zoom, BufferedImage.TYPE_INT_ARGB);
+        worldBackBuffer = new BufferedImage(vw, vh, BufferedImage.TYPE_INT_ARGB);
         HUDBackBuffer = new BufferedImage(vw, vh, BufferedImage.TYPE_INT_ARGB);
         input = new InputManager(this);
 
@@ -58,7 +59,6 @@ public class GamePanel extends JPanel {
         saveMenu = new SaveMenuScreen(this);
         battleScreen = new BattleScreen(this);
 
-        bindDefaultKeys();
         addHierarchyListener(e -> {
             if (isDisplayable()) requestFocusInWindow();
         });
@@ -85,60 +85,79 @@ public class GamePanel extends JPanel {
         System.out.println("New game started" + (saveName != null ? " and saved as: " + saveName : ""));
     }
 
-    void bindDefaultKeys() {
+    void updateInput() {
+        //debug Mode
+        if (input.consumeIfPressed("P")){
+            debugMode = !debugMode;
+        }
         // Character switching
-        input.bindKey("1", () -> switchToCharacter(0));
-        input.bindKey("2", () -> switchToCharacter(1));
-        input.bindKey("3", () -> switchToCharacter(2));
-
+        if (input.consumeIfPressed("1")){
+            switchToCharacter(0);
+        }
+        if (input.consumeIfPressed("2")){
+            switchToCharacter(1);
+        }
+        if (input.consumeIfPressed("3")){
+            switchToCharacter(2);
+        }
         // Battle trigger
-        input.bindKey("B", () -> {
+        if(input.consumeIfPressed("B")){
             if (state == State.WORLD) enterBattle();
-        });
-
+        }
         // Main menu navigation
-        input.bindKey("ENTER", () -> {
+        if(input.consumeIfPressed("ENTER")){
             if (state == State.TITLE) {
                 state = State.SAVE_MENU;
                 saveMenu.refresh();
+                return;
             }
-        });
-
+            if (state == State.SAVE_MENU) {
+                state = State.WORLD;
+                return;
+            }
+        }
         // Quick escape to title
-        input.bindKey("ESC", () -> {
-            if (state != State.TITLE) {
-                state = State.TITLE;
+        if(input.consumeIfPressed("ESC")){
+            switch (state) {
+                case WORLD:
+                case BATTLE:
+                    showPauseOverlay = !showPauseOverlay;
+                    System.out.println(showPauseOverlay);
+                    break;
+                case SAVE_MENU:
+                    state = State.TITLE;
+                    break;
+                case TITLE:
+                    int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to exit the game?", "Exit Game", JOptionPane.YES_NO_OPTION);
+                    if (confirm == JOptionPane.YES_OPTION) {
+                        System.exit(0);
+                    }
+                    break;
             }
-        });
+        }
 
         // NEW ZOOM CONTROLS
-        input.bindKey("PLUS", () -> {
+        if(input.consumeIfPressed("EQUALS")){
             if (state == State.WORLD && camera != null) {
                 camera.zoomIn();
                 System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
             }
-        });
+        }
 
-        input.bindKey("EQUALS", () -> {  // For keyboards where + requires shift
-            if (state == State.WORLD && camera != null) {
-                camera.zoomIn();
-                System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
-            }
-        });
 
-        input.bindKey("MINUS", () -> {
+        if(input.consumeIfPressed("MINUS")){
             if (state == State.WORLD && camera != null) {
                 camera.zoomOut();
                 System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
             }
-        });
+        }
 
-        input.bindKey("0", () -> {
+        if(input.consumeIfPressed("0")){
             if (state == State.WORLD && camera != null) {
                 camera.resetZoom();
-                System.out.println("Zoom reset to 1.0");
+                System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
             }
-        });
+        }
     }
 
     void switchToCharacter(int index) {
@@ -197,7 +216,7 @@ public class GamePanel extends JPanel {
             repaint();
 
             try {
-                Thread.sleep(8); // ~120 FPS cap
+                Thread.sleep(1); // ~120 FPS cap
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -206,6 +225,7 @@ public class GamePanel extends JPanel {
     }
 
     void updateLogic(double dt) {
+        updateInput();
         switch (state) {
             case TITLE:
                 titleScreen.update(dt);
@@ -214,10 +234,14 @@ public class GamePanel extends JPanel {
                 saveMenu.update(dt);
                 break;
             case WORLD:
-                updateWorld(dt);
+                if (!showPauseOverlay) {
+                    updateWorld(dt);
+                }
                 break;
             case BATTLE:
-                battleScreen.update(dt);
+                if (showPauseOverlay) {
+                    battleScreen.update(dt);;
+                }
                 break;
         }
     }
@@ -356,8 +380,7 @@ public class GamePanel extends JPanel {
         int drawW = (int) (vw * scale), drawH = (int) (vh * scale);
         int ox = (pw - drawW) / 2, oy = (ph - drawH) / 2;
 
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
         g2.setColor(Color.BLACK);
         g2.fillRect(0, 0, pw, ph);
@@ -379,37 +402,72 @@ public class GamePanel extends JPanel {
             g2.fillRect(0, 0, pw, oy);
             g2.fillRect(0, ph - oy, pw, oy);
         }
+        if (showPauseOverlay && (state == State.WORLD || state == State.BATTLE)) {
+            drawPauseMenu(g2); // new method
+        }
+    }
+    void drawPauseMenu(Graphics2D g) {
+        int menuWidth = 220, menuHeight = 140;
+        int x = (getWidth() - menuWidth) / 2;
+        int y = (getHeight() - menuHeight) / 2;
+
+        // Dim background
+        g.setColor(new Color(0, 0, 0, 180));
+        g.fillRect(0, 0, getWidth(), getHeight());
+
+        // Menu box
+        g.setColor(new Color(40, 40, 40));
+        g.fillRoundRect(x, y, menuWidth, menuHeight, 15, 15);
+
+        g.setColor(Color.WHITE);
+        g.setFont(FontCustom.PressStart2P.deriveFont(10f));
+
+        String[] options = { "Resume", "Save", "Main Menu", "Quit" };
+        for (int i = 0; i < options.length; i++) {
+            g.drawString(options[i], x + 30, y + 35 + i * 25);
+        }
     }
 
 
 
 
 
-
     void drawWorld(Graphics2D g) {
-        // Draw tilemap
-        if (map != null) {
-            map.draw(g, camera);
-        }
+        if (camera == null) return;
 
-        // Collect and sort entities by Y position
-        List<Entity> allEntities = new ArrayList<>();
-        if (party != null) {
-            allEntities.addAll(party);
-        }
-        if (demoEnemy != null) {
-            allEntities.add(demoEnemy);
-        }
+        AffineTransform oldTransform = g.getTransform();
+        try {
+            double zoomLevel = camera.getZoom();
+            g.translate(vw / 2.0, vh / 2.0);
+            g.scale(zoomLevel, zoomLevel);
+            g.translate(-camera.getX(), -camera.getY());
 
-        allEntities.sort(Comparator.comparingInt(e -> e.y + e.h));
-
-        // Draw entities
-        for (Entity e : allEntities) {
-            if (e != null) {
-                e.draw(g, camera);
+            if (map != null) {
+                map.draw(g, camera);
+                if (debugMode) {
+                    map.drawCollisionOverlay(g, camera);
+                    map.drawZoneOverlay(g, camera);
+                }
             }
-        }
 
+            List<Entity> allEntities = new ArrayList<>();
+            if (party != null) {
+                allEntities.addAll(party);
+            }
+            if (demoEnemy != null) {
+                allEntities.add(demoEnemy);
+            }
+
+            allEntities.sort(Comparator.comparingDouble(e -> e.y + e.h));
+
+            for (Entity e : allEntities) {
+                if (e != null) {
+                    e.draw(g, camera);
+                }
+            }
+        } finally {
+            g.setTransform(oldTransform);
+        }
     }
 
 
