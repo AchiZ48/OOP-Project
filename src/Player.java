@@ -8,7 +8,7 @@ class Player extends Entity {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    public Player(String name, SpriteAnim spr, int x, int y) {
+    public Player(String name, SpriteAnim spr, double x, double y) {
         this.name = name;
         this.sprite = spr;
         this.x = x;
@@ -23,7 +23,7 @@ class Player extends Entity {
         this.def = 2;
     }
 
-    static Player createSample(String name, int x, int y) {
+    static Player createSample(String name, double x, double y) {
         SpriteAnim spr;
         try {
             BufferedImage img = ImageIO.read(new File("resources/sprites/" + name.toLowerCase() + ".png"));
@@ -31,44 +31,12 @@ class Player extends Entity {
             System.out.println("Loaded sprite for " + name);
         } catch (Exception e) {
             // Generate procedural sprite based on name
-            BufferedImage bi = new BufferedImage(16 * 4, 16, BufferedImage.TYPE_INT_ARGB);
+
+            BufferedImage bi = new BufferedImage(16, 32, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g = bi.createGraphics();
-
-            // Create consistent color from name hash
-            int hash = Math.abs(name.hashCode());
-            Color baseColor = new Color((hash % 128) + 64,
-                    ((hash >> 8) % 128) + 64,
-                    ((hash >> 16) % 128) + 64);
-            Color darkColor = baseColor.darker();
-
-            // Draw 4 animation frames
-            for (int i = 0; i < 4; i++) {
-                int frameX = i * 16;
-
-                // Body
-                g.setColor(baseColor);
-                g.fillOval(frameX + 4, 4, 8, 10);
-
-                // Head
-                g.setColor(baseColor.brighter());
-                g.fillOval(frameX + 5, 2, 6, 6);
-
-                // Eyes
-                g.setColor(Color.BLACK);
-                g.fillOval(frameX + 6, 4, 1, 1);
-                g.setColor(Color.BLACK);
-                g.fillOval(frameX + 9, 4, 1, 1);
-
-                // Simple walk animation
-                int legOffset = (i % 2 == 0) ? 0 : 1;
-                g.setColor(darkColor);
-                g.fillRect(frameX + 6, 12 + legOffset, 1, 2);
-                g.fillRect(frameX + 9, 12 + (1 - legOffset), 1, 2);
-
-                // Outline
-                g.setColor(Color.BLACK);
-                g.drawRect(frameX, 0, 15, 15);
-            }
+            // Draw hitbox outline
+            g.setColor(Color.GREEN);
+            g.drawRect(0, 0, 15, 31);
             g.dispose();
 
             spr = new SpriteAnim(bi, 16, 16, 4, 1, 4);
@@ -78,13 +46,16 @@ class Player extends Entity {
     }
 
     public void updateWithInput(InputManager input, TileMap map, double dt) {
-        int speed = 80;
+        double speed = 80;
         int dx = 0, dy = 0;
 
         if (input.isPressed("LEFT")) dx -= 1;
         if (input.isPressed("RIGHT")) dx += 1;
         if (input.isPressed("UP")) dy -= 1;
         if (input.isPressed("DOWN")) dy += 1;
+        if (input.isPressed("SHIFT")) {
+            speed = 140.0;
+        }
 
         boolean isMoving = (dx != 0 || dy != 0);
 
@@ -95,31 +66,32 @@ class Player extends Entity {
             double vy = dy / len * speed;
 
             // Calculate movement deltas
-            int deltaX = (int) Math.round(vx * dt);
-            int deltaY = (int) Math.round(vy * dt);
+            double deltaX = vx * dt;
+            double deltaY = vy * dt;
+
 
             if (map != null) {
                 // Try horizontal movement first
-                int newX = x + deltaX;
+                double newX = x + deltaX;
                 if (isCollidingAt(map, newX, y)) {
                     x = newX;
                 }
 
                 // Then try vertical movement
-                int newY = y + deltaY;
+                double newY = y + deltaY;
                 if (isCollidingAt(map, x, newY)) {
                     y = newY;
                 }
 
                 // Bounds checking (prevent going outside map)
-                x = Math.max(0, Math.min(map.pixelWidth - w, x));
-                y = Math.max(0, Math.min(map.pixelHeight - h, y));
+                x = Math.max(0.0, Math.min(map.pixelWidth - w, x));
+                y = Math.max(0.0, Math.min(map.pixelHeight - h, y));
             } else {
                 // No map collision, just move normally
                 x += deltaX;
                 y += deltaY;
             }
-
+            System.out.println(x + " " + y);
             sprite.playing = true;
         } else {
             sprite.playing = false;
@@ -129,19 +101,17 @@ class Player extends Entity {
     }
 
     // Helper method to check if player would collide at given position
-    private boolean isCollidingAt(TileMap map, int px, int py) {
-        // Add small margin to prevent edge cases
-        int margin = 1;
+    private boolean isCollidingAt(TileMap map, double px, double py) {
 
-        // Check corners with margin
-        int left = px + margin;
-        int right = px + w - margin - 1;
-        int top = py + margin;
-        int bottom = py + h - margin - 1;
+        // Check
+        double left = px ;
+        double right = px + w;
+        double top = py;
+        double bottom = py + h;
 
         // Make sure we don't check negative positions
-        left = Math.max(0, left);
-        top = Math.max(0, top);
+        left = Math.max(0.0, left);
+        top = Math.max(0.0, top);
 
         // Check the four corners of the player hitbox
         return map.isSolidAtPixel(left, top) &&           // top-left
