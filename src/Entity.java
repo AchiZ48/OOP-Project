@@ -3,7 +3,9 @@ import java.io.Serializable;
 
 public abstract class Entity implements Serializable {
     String name;
-    int x, y, w, h;
+    double x, y;
+    int w, h;
+    double posX, posY;
     SpriteAnim sprite;
     int hp, maxHp, level, exp, str, def;
     int id;
@@ -16,8 +18,8 @@ public abstract class Entity implements Serializable {
 
     void draw(Graphics2D g, Camera cam) {
         if (sprite == null) return;
-        int sx = cam.worldToScreenX(x);
-        int sy = cam.worldToScreenY(y);
+        int sx = (int) Math.round(x);
+        int sy = (int) Math.round(y);
         sprite.draw(g, sx, sy, w, h);
     }
 }
