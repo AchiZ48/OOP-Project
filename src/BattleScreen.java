@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -5,6 +6,7 @@ import java.util.List;
 
 public class BattleScreen {
     GamePanel gp;
+    ImageIcon backgroundImage;
     List<Player> party;
     Enemy enemy;
     int currentPlayerIndex = 0;
@@ -26,13 +28,14 @@ public class BattleScreen {
 
     public BattleScreen(GamePanel gp) {
         this.gp = gp;
+        backgroundImage = new ImageIcon("resources/battlebg/bg1.gif");
+
         skills = Arrays.asList(
                 new Skill("Strike", 1, 6, "Basic physical attack"),
                 new Skill("Power Attack", 2, 10, "Strong physical attack"),
                 new Skill("Guard", 1, 0, "Reduce incoming damage")
         );
     }
-
     void startBattle(List<Player> party, Enemy enemy) {
         this.party = new ArrayList<>(party);
         this.enemy = enemy;
@@ -165,6 +168,10 @@ public class BattleScreen {
         g.setColor(new Color(6, 6, 30));
         g.fillRect(0, 0, gp.vw, gp.vh);
 
+        if (backgroundImage != null) {
+            drawImageAspectFit(g, backgroundImage);
+        }
+
         // Battle title
         g.setColor(Color.WHITE);
         g.setFont(new Font("SansSerif", Font.BOLD, 24));
@@ -175,13 +182,11 @@ public class BattleScreen {
             // Position enemy in center-right
             int enemyX = gp.vw - 200;
             int enemyY = 100;
-            enemy.x = enemyX;
-            enemy.y = enemyY;
+            enemy.setPrecisePosition(enemyX, enemyY);
 
             // Create a simple camera for enemy rendering
             Camera battleCam = new Camera(gp.vw, gp.vh, gp.map);
-            battleCam.x = gp.vw / 2.0;
-            battleCam.y = gp.vh / 2.0;
+            battleCam.setCenter(gp.vw / 2.0, gp.vh / 2.0);
 
             enemy.draw(g, battleCam);
 
@@ -256,5 +261,26 @@ public class BattleScreen {
         g.setFont(new Font("Monospaced", Font.PLAIN, 10));
         g.drawString("ESC: Flee | Enter: Use Skill", gp.vw - 200, gp.vh - 10);
     }
+
+    private void drawImageAspectFit(Graphics2D g, ImageIcon img) {
+        int imgW = img.getIconWidth();
+        int imgH = img.getIconHeight();
+        if (imgW <= 0 || imgH <= 0) {
+            g.setColor(Color.DARK_GRAY);
+            g.fillRect(0, 0, gp.vw, gp.vh);
+            return;
+        }
+
+        double scale = Math.min((double) gp.vw / imgW, (double) gp.vh / imgH);
+        int drawW = (int) Math.round(imgW * scale);
+        int drawH = (int) Math.round(imgH * scale);
+        int x = (gp.vw - drawW) / 2;
+        int y = (gp.vh - drawH) / 2;
+
+        g.drawImage(img.getImage(), x, y, drawW, drawH, null);
+    }
 }
+
+
+
 

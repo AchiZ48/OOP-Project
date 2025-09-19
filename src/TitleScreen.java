@@ -9,7 +9,6 @@ class TitleScreen {
     BufferedImage backgroundImage;
     String path = "resources/title/title2.png";
 
-
     public TitleScreen(GamePanel gp) {
         this.gp = gp;
         try {
@@ -30,10 +29,13 @@ class TitleScreen {
                 0, gp.vh, new Color(40, 20, 60));
         g.setPaint(gradient);
         g.fillRect(0, 0, gp.vw, gp.vh);
-        //Background image
-        g.drawImage(backgroundImage, 0, 0, gp.vw, gp.vh, null);
 
-        // Title
+        // Background image with aspect-fit rendering
+        if (backgroundImage != null) {
+            drawImageAspectFit(g, backgroundImage);
+        }
+
+        // Title text
         g.setColor(Color.WHITE);
         g.setFont(FontCustom.PressStart2P.deriveFont(32f));
         drawCenteredString(g, "Solstice Warriors", gp.vw / 2, gp.vh - 48);
@@ -42,10 +44,23 @@ class TitleScreen {
         g.setFont(FontCustom.PressStart2P.deriveFont(16f));
         drawCenteredString(g, "Press ENTER to Start", gp.vw / 2, gp.vh - 80);
 
-        // Instructions
-        g.setFont(FontCustom.PressStart2P.deriveFont(16f));
+        // Footer/edition label
         g.setColor(Color.LIGHT_GRAY);
         drawCenteredString(g, "Demo Edition", gp.vw / 2, gp.vh - 16);
+    }
+
+    private void drawImageAspectFit(Graphics2D g, BufferedImage img) {
+        int imgW = img.getWidth();
+        int imgH = img.getHeight();
+        if (imgW <= 0 || imgH <= 0) return;
+
+        double scale = Math.min((double) gp.vw / imgW, (double) gp.vh / imgH);
+        int drawW = (int) Math.round(imgW * scale);
+        int drawH = (int) Math.round(imgH * scale);
+        int x = (gp.vw - drawW) / 2;
+        int y = (gp.vh - drawH) / 2;
+
+        g.drawImage(img, x, y, drawW, drawH, null);
     }
 
     void drawCenteredString(Graphics2D g, String s, int cx, int cy) {
