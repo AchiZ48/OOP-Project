@@ -164,10 +164,6 @@ public class TileMap {
         int tileY = (int) (wy / tileH);
         return isSolid(tileX, tileY);
     }
-    public int getCollisionAt(int tileX,int tileY){
-        if(tileX<0||tileX>=cols||tileY<0||tileY>=rows) return 1;
-        return collisionLayer[tileY][tileX];
-    }
     public void drawCollisionOverlay(Graphics2D g, Camera cam){
         if(collisionLayer==null) return;
         g.setColor(new Color(255, 0, 0, 128));
