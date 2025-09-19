@@ -105,22 +105,22 @@ public class GamePanel extends JPanel {
             if (state == State.WORLD) enterBattle();
         }
         // Main menu navigation
-        if(input.consumeIfPressed("ENTER")){
-            if (state == State.TITLE) {
+        if (state == State.TITLE) {
+            if (input.consumeIfPressed("ENTER")) {
                 state = State.SAVE_MENU;
                 saveMenu.refresh();
                 return;
             }
-            if (state == State.SAVE_MENU) {
+        } else if (state == State.SAVE_MENU) {
+            if (input.consumeIfPressed("ENTER")) {
                 state = State.WORLD;
                 return;
             }
         }
-        // Quick escape to title
-        if(input.consumeIfPressed("ESC")){
+        // Quick escape behaviour
+        if (state != State.BATTLE && input.consumeIfPressed("ESC")){
             switch (state) {
                 case WORLD:
-                case BATTLE:
                     showPauseOverlay = !showPauseOverlay;
                     System.out.println(showPauseOverlay);
                     break;
@@ -261,7 +261,7 @@ public class GamePanel extends JPanel {
                 }
                 break;
             case BATTLE:
-                if (showPauseOverlay) {
+                if (!showPauseOverlay) {
                     battleScreen.update(dt);
                 }
                 break;
@@ -296,6 +296,7 @@ public class GamePanel extends JPanel {
 
     void enterBattle() {
         if (party != null && !party.isEmpty() && demoEnemy != null) {
+            showPauseOverlay = false;
             battleScreen.startBattle(new ArrayList<>(party), demoEnemy);
             state = State.BATTLE;
             System.out.println("Battle started!");
@@ -303,6 +304,7 @@ public class GamePanel extends JPanel {
     }
 
     void returnToWorld() {
+        showPauseOverlay = false;
         state = State.WORLD;
         System.out.println("Returned to world");
     }
@@ -531,3 +533,4 @@ public class GamePanel extends JPanel {
 //        g.drawString("Controls: 1/2/3=Switch | B=Battle | +/-=Zoom | 0=Reset", 16, 120);
     }
 }
+
