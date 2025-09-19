@@ -8,7 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 public class TileMap {
     int tileW, tileH, cols, rows, pixelWidth, pixelHeight;
-    int[][] layer;
+    int[][] groundLayer;
+    int[][] ground2Layer;
     int[][] decorationLayer;
     int[][] collisionLayer;
     int[][] zoneLayer;
@@ -16,6 +17,7 @@ public class TileMap {
     List<TilesetEntry> tilesets = new ArrayList<>();
     // pre-render images
     BufferedImage groundImage;
+    BufferedImage ground2Image;
     BufferedImage decorationImage;
     static class TilesetEntry {
         int firstGid;
@@ -42,7 +44,8 @@ public class TileMap {
         tm.tileW = tileW; tm.tileH = tileH;
         tm.cols = width; tm.rows = height;
         tm.pixelWidth = width*tileW; tm.pixelHeight = height*tileH;
-        tm.layer = new int[height][width];
+        tm.groundLayer = new int[height][width];
+        tm.ground2Layer = new int[height][width];
         tm.decorationLayer = new int[height][width];
         tm.collisionLayer = new int[height][width];
         tm.decorationVisible = true;
@@ -89,13 +92,15 @@ public class TileMap {
             switch(name.toLowerCase()){
                 case "collision": tm.collisionLayer = layerData; break;
                 case "decoration": tm.decorationLayer = layerData; tm.decorationVisible = true; break;
-                case "ground": tm.layer = layerData; break;
+                case "ground": tm.groundLayer = layerData; break;
+                case "ground2": tm.ground2Layer = layerData; break;
                 case "zone": tm.zoneLayer = layerData; break;
-                default: tm.layer = layerData; break;
+                default: tm.groundLayer = layerData; break;
             }
         }
         // ---------- Pre-render images ----------
-        tm.groundImage = tm.renderLayer(tm.layer);
+        tm.groundImage = tm.renderLayer(tm.groundLayer);
+        tm.ground2Image = tm.renderLayer(tm.ground2Layer);
         tm.decorationImage = tm.renderLayer(tm.decorationLayer);
         return tm;
     }
@@ -116,15 +121,26 @@ public class TileMap {
         return img;
     }
     // ---------------- Draw ----------------
-    public void draw(Graphics2D g, Camera cam){
-        if(groundImage != null){
+    public void draw(Graphics2D g, Camera cam) {
+        drawGround(g, cam);
+        drawDecorations(g, cam);
+    }
+
+    public void drawGround(Graphics2D g, Camera cam) {
+        if (groundImage != null) {
             g.drawImage(groundImage, 0, 0, null);
         }
-        if(decorationImage != null && decorationVisible){
+        if (ground2Image != null) {
+            g.drawImage(ground2Image, 0, 0, null);
+        }
+    }
+
+    public void drawDecorations(Graphics2D g, Camera cam) {
+        if (decorationImage != null && decorationVisible) {
             g.drawImage(decorationImage, 0, 0, null);
         }
-
     }
+
     private void drawGID(Graphics2D g, int gid, int x, int y, int w, int h){
         if(gid<=0) return;
         TilesetEntry entry=null;
@@ -146,7 +162,7 @@ public class TileMap {
     public boolean isSolidAtPixel(double wx, double wy){
         int tileX = (int) (wx / tileW);
         int tileY = (int) (wy / tileH);
-        return !isSolid(tileX, tileY);
+        return isSolid(tileX, tileY);
     }
     public int getCollisionAt(int tileX,int tileY){
         if(tileX<0||tileX>=cols||tileY<0||tileY>=rows) return 1;
