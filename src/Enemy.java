@@ -7,8 +7,6 @@ class Enemy extends Entity {
     public Enemy(String name, SpriteAnim spr, double x, double y) {
         this.name = name;
         this.sprite = spr;
-        this.x = x;
-        this.y = y;
         this.w = spr.frameW * spr.scale;
         this.h = spr.frameH * spr.scale;
         this.maxHp = 200;
