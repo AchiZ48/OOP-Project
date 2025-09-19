@@ -2,11 +2,15 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class BattleScreen {
     GamePanel gp;
     ImageIcon backgroundImage;
+    ImageIcon nameBannerImage;
     List<Player> party;
     Enemy enemy;
     int currentPlayerIndex = 0;
@@ -14,6 +18,7 @@ public class BattleScreen {
     int selectedSkill = 0;
     boolean waitingForInput = true;
     String lastAction = "";
+    final Map<String, ImageIcon> backSpriteCache = new HashMap<>();
 
     static class Skill {
         String name;
@@ -29,6 +34,9 @@ public class BattleScreen {
     public BattleScreen(GamePanel gp) {
         this.gp = gp;
         backgroundImage = new ImageIcon("resources/battlebg/bg1.gif");
+
+        ImageIcon nameIcon = new ImageIcon("resources/battlebg/name_back.gif");
+        nameBannerImage = nameIcon.getIconWidth() > 0 ? nameIcon : null;
 
         skills = Arrays.asList(
                 new Skill("Strike", 1, 6, "Basic physical attack"),
@@ -232,12 +240,66 @@ public class BattleScreen {
 
         // Skills panel (bottom)
         int skillY = gp.vh - 140;
+        int panelX = 20;
+        int panelY = skillY - 20;
+        int panelW = gp.vw - 40;
+        int panelH = 120;
         g.setColor(new Color(0, 0, 0, 180));
-        g.fillRoundRect(20, skillY - 20, gp.vw - 40, 120, 10, 10);
+        g.fillRoundRect(panelX, panelY, panelW, panelH, 10, 10);
+
+        ImageIcon backSprite = null;
+        if (party != null && !party.isEmpty() && currentPlayerIndex >= 0 && currentPlayerIndex < party.size()) {
+            backSprite = getBackSpriteFor(party.get(currentPlayerIndex));
+        }
+
+        int skillTextX = 40;
+        if (backSprite != null && backSprite.getIconWidth() > 0 && backSprite.getIconHeight() > 0) {
+            int rawW = backSprite.getIconWidth();
+            int rawH = backSprite.getIconHeight();
+            int maxHeight = panelH - 24;
+            int maxWidth = panelW / 3;
+            double scale = 1.0;
+            if (rawH > 0) {
+                scale = Math.min(scale, maxHeight / (double) rawH);
+            }
+            if (rawW > 0) {
+                scale = Math.min(scale, maxWidth / (double) rawW);
+            }
+            int drawW = (int)Math.round(rawW * scale);
+            int drawH = (int)Math.round(rawH * scale);
+            int imgX = panelX + 20;
+            int imgY = panelY + (panelH - drawH) / 2;
+            g.drawImage(backSprite.getImage(), imgX, imgY, drawW, drawH, null);
+            skillTextX = imgX + drawW + 20;
+        }
+        skillTextX = Math.max(skillTextX, panelX + 20);
+
+        String bannerName = null;
+        if (waitingForInput && currentPlayerIndex >= 0 && currentPlayerIndex < party.size()) {
+            Player active = party.get(currentPlayerIndex);
+            if (active != null) {
+                bannerName = active.name;
+            }
+        }
+
+        if (bannerName != null && nameBannerImage != null && nameBannerImage.getIconWidth() > 0) {
+            int bannerW = nameBannerImage.getIconWidth();
+            int bannerH = nameBannerImage.getIconHeight();
+            int bannerX = 30;
+            int bannerY = skillY - bannerH - 12;
+            g.drawImage(nameBannerImage.getImage(), bannerX, bannerY, null);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Monospaced", Font.BOLD, 16));
+            FontMetrics fmBanner = g.getFontMetrics();
+            int textX = bannerX + (bannerW - fmBanner.stringWidth(bannerName)) / 2;
+            int textY = bannerY + (bannerH + fmBanner.getAscent()) / 2 - 4;
+            g.drawString(bannerName, textX, textY);
+        }
 
         g.setColor(Color.WHITE);
         g.setFont(new Font("Monospaced", Font.BOLD, 14));
-        g.drawString("Skills (Use 1/2/3 or Up/Down + Enter):", 30, skillY);
+        int skillHeaderX = Math.max(skillTextX - 10, panelX + 10);
+        g.drawString("Skills (Use 1/2/3 or Up/Down + Enter):", skillHeaderX, skillY);
 
         for (int i = 0; i < skills.size(); i++) {
             Skill skill = skills.get(i);
@@ -248,7 +310,7 @@ public class BattleScreen {
 
             String skillText = String.format("%d. %s (Cost: %d) - %s",
                     i + 1, skill.name, skill.cost, skill.description);
-            g.drawString((i == selectedSkill ? "> " : "  ") + skillText, 40, y);
+            g.drawString((i == selectedSkill ? "> " : "  ") + skillText, skillTextX, y);
         }
 
         // Action log
@@ -260,6 +322,33 @@ public class BattleScreen {
         g.setColor(Color.GRAY);
         g.setFont(new Font("Monospaced", Font.PLAIN, 10));
         g.drawString("ESC: Flee | Enter: Use Skill", gp.vw - 200, gp.vh - 10);
+    }
+
+    private ImageIcon getBackSpriteFor(Player player) {
+        if (player == null || player.name == null) {
+            return null;
+        }
+        String normalized = player.name.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (!backSpriteCache.containsKey(normalized)) {
+            backSpriteCache.put(normalized, loadBackSprite(normalized));
+        }
+        ImageIcon icon = backSpriteCache.get(normalized);
+        if (icon == null) {
+            return null;
+        }
+        return (icon.getIconWidth() > 0 && icon.getIconHeight() > 0) ? icon : null;
+    }
+
+    private ImageIcon loadBackSprite(String nameKey) {
+        if (nameKey == null || nameKey.isEmpty()) {
+            return null;
+        }
+        ImageIcon icon = new ImageIcon("resources/sprites/" + nameKey + "_back.gif");
+        System.out.println("loaded");
+        return icon.getIconWidth() > 0 ? icon : null;
     }
 
     private void drawImageAspectFit(Graphics2D g, ImageIcon img) {
@@ -280,7 +369,4 @@ public class BattleScreen {
         g.drawImage(img.getImage(), x, y, drawW, drawH, null);
     }
 }
-
-
-
 
