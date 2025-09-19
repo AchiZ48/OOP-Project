@@ -68,7 +68,7 @@ public class GamePanel extends JPanel {
         party = new ArrayList<>();
         party.add(Player.createSample("Bluu", 64, 64));
         party.add(Player.createSample("Souri", 96, 64));
-        party.add(Player.createSample("Ferryman", 128, 64));
+        party.add(Player.createSample("Bob", 128, 64));
         activeIndex = 0;
         if (camera != null) {
             camera.followEntity(party.get(activeIndex));
@@ -161,10 +161,11 @@ public class GamePanel extends JPanel {
     }
 
     void switchToCharacter(int index) {
-        if (state == State.WORLD && index >= 0 && index < party.size()) {
+        if (state == State.WORLD && index >= 0 && index < party.size() && index != activeIndex) {
             activeIndex = index;
-            camera.followEntity(party.get(activeIndex));
-            System.out.println("Switched to " + party.get(activeIndex).name);
+            Player leader = party.get(activeIndex);
+            camera.followEntity(leader);
+            System.out.println("Switched to " + leader.name);
         }
     }
 
@@ -192,37 +193,58 @@ public class GamePanel extends JPanel {
     }
 
     void gameLoop() {
+        final double updateInterval = 1_000_000_000.0 / LOGIC_FPS;
         double accumulator = 0.0;
         long lastTime = System.nanoTime();
+        long timer = 0L;
+        int frameCount = 0;
+        boolean needsRepaint = false;
 
         while (running) {
-            long now = System.nanoTime();
-            double frameTime = (now - lastTime) / 1e9;
-            lastTime = now;
+            long currentTime = System.nanoTime();
+            long elapsed = currentTime - lastTime;
+            lastTime = currentTime;
 
-            // Cap frame time to prevent spiral of death
-            if (frameTime > 0.25) frameTime = 0.25;
-            accumulator += frameTime;
+            accumulator += elapsed;
+            timer += elapsed;
 
-            input.update();
+            // Prevent spiral of death
+            accumulator = Math.min(accumulator, updateInterval * 3);
 
-            // Fixed timestep logic updates
-            while (accumulator >= LOGIC_DT) {
+            // Update logic at fixed timestep
+            while (accumulator >= updateInterval) {
                 updateLogic(LOGIC_DT);
-                accumulator -= LOGIC_DT;
+                accumulator -= updateInterval;
+                needsRepaint = true;
             }
 
-            // Render
-            repaint();
+            // Repaint only once per frame, only if needed
+            if (needsRepaint) {
+                repaint();
+                needsRepaint = false;
+                frameCount++;
+            }
 
+            // FPS counter
+            if (timer >= 1_000_000_000L) {
+                if (debugMode) {
+                    System.out.println("FPS: " + frameCount);
+                }
+                frameCount = 0;
+                timer = 0;
+            }
+
+            // Prevent CPU spinning
             try {
-                Thread.sleep(1); // ~120 FPS cap
+                Thread.sleep(1);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
             }
         }
     }
+
+
 
     void updateLogic(double dt) {
         updateInput();
@@ -240,30 +262,35 @@ public class GamePanel extends JPanel {
                 break;
             case BATTLE:
                 if (showPauseOverlay) {
-                    battleScreen.update(dt);;
+                    battleScreen.update(dt);
                 }
                 break;
         }
     }
 
     void updateWorld(double dt) {
-        for (int i = 0; i < party.size(); i++) {
-            Player p = party.get(i);
-            if (i == activeIndex) {
-                p.updateWithInput(input, map, dt);
-            } else {
-                p.idleUpdate(dt);
-            }
+        if (party == null || party.isEmpty()) {
+            return;
         }
 
-        // Update enemy
+        Player leader = party.get(activeIndex);
+        leader.updateWithInput(input, map, dt);
+
+        final double spacing = 48.0;
+        Player previous = leader;
+        for (int offset = 1; offset < party.size(); offset++) {
+            int idx = (activeIndex + offset) % party.size();
+            Player follower = party.get(idx);
+            follower.follow(previous, map, dt, spacing);
+            previous = follower;
+        }
+
         if (demoEnemy != null) {
             demoEnemy.update(dt);
         }
 
-        // Update camera
         if (activeIndex < party.size()) {
-            camera.update(dt, party.get(activeIndex));
+            camera.update(dt, leader);
         }
     }
 
@@ -333,7 +360,6 @@ public class GamePanel extends JPanel {
         // --- World back buffer ---
         Graphics2D gWorld = worldBackBuffer.createGraphics();
         gWorld.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-        gWorld.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
         gWorld.setColor(new Color(0x2b2b2b));
         gWorld.fillRect(0, 0, worldBackBuffer.getWidth(), worldBackBuffer.getHeight());
 
@@ -391,7 +417,7 @@ public class GamePanel extends JPanel {
         }
 
         // Draw UI overlay (HUD for WORLD, UI for TITLE/SAVE/BATTLE)
-        g2.drawImage(HUDBackBuffer, 0, 0, pw, ph, null);
+        g2.drawImage(HUDBackBuffer, ox, oy, drawW, drawH, null);
 
         // Letterbox
         g2.setColor(new Color(0, 0, 0, 120));
@@ -438,16 +464,14 @@ public class GamePanel extends JPanel {
         AffineTransform oldTransform = g.getTransform();
         try {
             double zoomLevel = camera.getZoom();
+            double camRenderX = camera.getRenderX();
+            double camRenderY = camera.getRenderY();
             g.translate(vw / 2.0, vh / 2.0);
             g.scale(zoomLevel, zoomLevel);
-            g.translate(-camera.getX(), -camera.getY());
+            g.translate(-camRenderX, -camRenderY);
 
             if (map != null) {
-                map.draw(g, camera);
-                if (debugMode) {
-                    map.drawCollisionOverlay(g, camera);
-                    map.drawZoneOverlay(g, camera);
-                }
+                map.drawGround(g, camera);
             }
 
             List<Entity> allEntities = new ArrayList<>();
@@ -458,20 +482,25 @@ public class GamePanel extends JPanel {
                 allEntities.add(demoEnemy);
             }
 
-            allEntities.sort(Comparator.comparingDouble(e -> e.y + e.h));
+            allEntities.sort(Comparator.comparingDouble(e -> e.getPreciseY() + e.h));
 
             for (Entity e : allEntities) {
                 if (e != null) {
                     e.draw(g, camera);
                 }
             }
+
+            if (map != null) {
+                map.drawDecorations(g, camera);
+                if (debugMode) {
+                    map.drawCollisionOverlay(g, camera);
+                    map.drawZoneOverlay(g, camera);
+                }
+            }
         } finally {
             g.setTransform(oldTransform);
         }
     }
-
-
-
     void drawHUD(Graphics2D g) {
         if (party == null || party.isEmpty()) return;
 
@@ -491,13 +520,14 @@ public class GamePanel extends JPanel {
                     prefix, p.name, p.level, p.hp, p.maxHp);
             g.drawString(info, 16, y0);
         }
-
+        g.setFont(FontCustom.PressStart2P.deriveFont(8f));
         // Show zoom level
         g.setColor(Color.CYAN);
         g.drawString(String.format("Zoom: %.2fx", camera.getZoom()), 16, 16);
+        g.drawString(String.format("X: %.2f Y: %.2f", party.get(activeIndex).getPreciseX(), party.get(activeIndex).getPreciseY()) , 128, 16);
 
 //        g.setColor(Color.LIGHT_GRAY);
-//        g.setFont(FontCustom.PressStart2P.deriveFont(8f));
+//
 //        g.drawString("Controls: 1/2/3=Switch | B=Battle | +/-=Zoom | 0=Reset", 16, 120);
     }
 }
