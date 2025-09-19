@@ -31,7 +31,7 @@ class Player extends Entity {
         this.sprite = spr;
         setPrecisePosition(x, y);
         this.w = 32;
-        this.h = 48;
+        this.h = 64;
         this.maxHp = 30;
         this.hp = maxHp;
         this.level = 1;
@@ -228,19 +228,30 @@ class Player extends Entity {
         double left = px + COLLIDER_INSET;
         double right = px + w - 1.0 - COLLIDER_INSET;
         double bottom = py + h - 1.0;
-        double top = Math.max(py, bottom - FOOT_HEIGHT);
+        double footTop = Math.max(py, bottom - FOOT_HEIGHT);
+        double midTop = Math.max(py, footTop - map.tileH);
 
         left = Math.max(0.0, left);
-        top = Math.max(0.0, top);
         right = Math.min(map.pixelWidth - 1.0, right);
         bottom = Math.min(map.pixelHeight - 1.0, bottom);
+        footTop = Math.max(0.0, Math.min(bottom, footTop));
+        midTop = Math.max(0.0, Math.min(bottom, midTop));
 
-        return !(map.isSolidAtPixel(left, top)
-                || map.isSolidAtPixel(right, top)
+        if (map.isSolidAtPixel(left, footTop)
+                || map.isSolidAtPixel(right, footTop)
                 || map.isSolidAtPixel(left, bottom)
-                || map.isSolidAtPixel(right, bottom));
-    }
+                || map.isSolidAtPixel(right, bottom)) {
+            return false;
+        }
 
+        if (midTop < footTop) {
+            if (map.isSolidAtPixel(left, midTop) || map.isSolidAtPixel(right, midTop)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
     @Override
     void update(double dt) {
         if (sprite != null) {
@@ -256,3 +267,4 @@ class Player extends Entity {
         return getPreciseY();
     }
 }
+
