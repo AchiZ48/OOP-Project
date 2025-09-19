@@ -12,14 +12,28 @@ public abstract class Entity implements Serializable {
 
     abstract void update(double dt);
 
-    void idleUpdate(double dt) {
-        update(dt);
+
+    void setPrecisePosition(double px, double py) {
+        this.x = Math.floor(px);
+        this.posX = px - this.x;
+        this.y = Math.floor(py);
+        this.posY = py - this.y;
     }
+
+
+    double getPreciseX() {
+        return x + posX;
+    }
+
+    double getPreciseY() {
+        return y + posY;
+    }
+
 
     void draw(Graphics2D g, Camera cam) {
         if (sprite == null) return;
-        int sx = (int) Math.round(x);
-        int sy = (int) Math.round(y);
-        sprite.draw(g, sx, sy, w, h);
+        sprite.draw(g, x, y, w, h);
     }
 }
+
+
