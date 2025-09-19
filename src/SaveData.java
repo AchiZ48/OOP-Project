@@ -18,8 +18,8 @@ class SaveData implements Serializable {
         for (Player p : party) {
             PlayerData pd = new PlayerData();
             pd.name = p.name;
-            pd.x = p.x;
-            pd.y = p.y;
+            pd.x = p.getPreciseX();
+            pd.y = p.getPreciseY();
             pd.hp = p.hp;
             pd.maxHp = p.maxHp;
             pd.level = p.level;
@@ -46,3 +46,4 @@ class SaveData implements Serializable {
         return out;
     }
 }
+
