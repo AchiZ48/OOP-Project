@@ -109,10 +109,14 @@ public class InputManager {
     }
 
     public boolean consumeIfPressed(String k) {
-        if (keysPressed.contains(k) && !keysConsumed.contains(k)) {
-            keysConsumed.add(k);
-            return true;
+        if (!keysPressed.contains(k)) {
+            keysConsumed.remove(k);
+            return false;
         }
-        return false;
+        if (keysConsumed.contains(k)) {
+            return false;
+        }
+        keysConsumed.add(k);
+        return true;
     }
 }
