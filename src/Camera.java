@@ -2,11 +2,13 @@ public class Camera {
     int vw, vh;
     TileMap map;
     double x, y;
+    double fracX = 0.0;
+    double fracY = 0.0;
     double smooth = 8.0;
 
     // Zoom properties
     double zoom = 1.0;
-    double targetZoom = 2.0;
+    double targetZoom = 1.0;
     double minZoom = 0.5;
     double maxZoom = 4.0;
     double zoomSpeed = 5.0;
@@ -18,8 +20,7 @@ public class Camera {
         this.vw = vw;
         this.vh = vh;
         this.map = map;
-        x = vw / 2.0;
-        y = vh / 2.0;
+        setPreciseCenter(vw / 2.0, vh / 2.0);
         updateVirtualDimensions();
     }
 
@@ -28,47 +29,39 @@ public class Camera {
         if (Math.abs(zoom - targetZoom) > 0.001) {
             zoom += (targetZoom - zoom) * Math.min(1.0, zoomSpeed * dt);
             updateVirtualDimensions();
+            clampToMap();
         }
 
         if (follow == null) return;
 
-        double targetX = follow.x + follow.w / 2.0;
-        double targetY = follow.y + follow.h / 2.0;
+        double targetX = follow.getPreciseX() + follow.w / 2.0;
+        double targetY = follow.getPreciseY() + follow.h / 2.0;
 
-        // Smooth following
-        x += (targetX - x) * Math.min(1.0, smooth * dt);
-        y += (targetY - y) * Math.min(1.0, smooth * dt);
+        double currentX = getPreciseX();
+        double currentY = getPreciseY();
 
-        // Snap camera position to prevent sub-pixel positioning
-        snapCameraPosition();
-        clampToMap();
+        // Smooth following with fractional accumulator
+        double followFactor = 1.0 - Math.exp(-smooth * dt);
+        currentX += (targetX - currentX) * followFactor;
+        currentY += (targetY - currentY) * followFactor;
+
+        setPreciseCenter(clampX(currentX), clampY(currentY));
     }
 
     public void followEntity(Entity e) {
         if (e != null) {
-            x = e.x + e.w / 2.0;
-            y = e.y + e.h / 2.0;
-            snapCameraPosition();
-            clampToMap();
+            double centerX = clampX(e.getPreciseX() + e.w / 2.0);
+            double centerY = clampY(e.getPreciseY() + e.h / 2.0);
+            setPreciseCenter(centerX, centerY);
         }
     }
 
-    void clampToMap() {
-        if (map == null) return;
-
-        double halfW = virtualVw / 2.0, halfH = virtualVh / 2.0;
-        double maxX = Math.max(halfW, map.pixelWidth - halfW);
-        double maxY = Math.max(halfH, map.pixelHeight - halfH);
-
-        x = Math.max(halfW, Math.min(maxX, x));
-        y = Math.max(halfH, Math.min(maxY, y));
+    public void setCenter(double px, double py) {
+        setPreciseCenter(clampX(px), clampY(py));
     }
 
-    // Snap camera position to pixel boundaries based on zoom level
-    private void snapCameraPosition() {
-        double pixelSize = 1.0 / zoom;
-        x = Math.round(x / pixelSize) * pixelSize;
-        y = Math.round(y / pixelSize) * pixelSize;
+    void clampToMap() {
+        setPreciseCenter(clampX(getPreciseX()), clampY(getPreciseY()));
     }
 
     void updateVirtualDimensions() {
@@ -79,11 +72,11 @@ public class Camera {
 
     // Zoom controls
     public void zoomIn() {
-        setTargetZoom(Math.min(maxZoom, targetZoom * 1.25));
+        setTargetZoom(Math.min(maxZoom, targetZoom + 0.1));
     }
 
     public void zoomOut() {
-        setTargetZoom(Math.max(minZoom, targetZoom / 1.25));
+        setTargetZoom(Math.max(minZoom, targetZoom - 0.1));
     }
 
     public void setTargetZoom(double newZoom) {
@@ -95,34 +88,58 @@ public class Camera {
     }
 
     public double getX() {
-        return x;
+        return getPreciseX();
     }
 
     public double getY() {
+        return getPreciseY();
+    }
+
+    double getPreciseX() {
+        return x + fracX;
+    }
+
+    double getPreciseY() {
+        return y + fracY;
+    }
+
+    private void setPreciseCenter(double px, double py) {
+        double flooredX = Math.floor(px);
+        fracX = px - flooredX;
+        x = flooredX;
+        double flooredY = Math.floor(py);
+        fracY = py - flooredY;
+        y = flooredY;
+    }
+
+    private double clampX(double value) {
+        if (map == null) return value;
+
+        double halfW = virtualVw / 2.0;
+        double maxX = Math.max(halfW, map.pixelWidth - halfW);
+        return Math.max(halfW, Math.min(maxX, value));
+    }
+
+    private double clampY(double value) {
+        if (map == null) return value;
+
+        double halfH = virtualVh / 2.0;
+        double maxY = Math.max(halfH, map.pixelHeight - halfH);
+        return Math.max(halfH, Math.min(maxY, value));
+    }
+
+    public double getRenderX() {
+        return x;
+    }
+
+    public double getRenderY() {
         return y;
-    }
-
-    public double getViewWidth() {
-        return virtualVw;
-    }
-
-    public double getViewHeight() {
-        return virtualVh;
     }
 
     public void resetZoom() {
         setTargetZoom(1.0);
     }
 
-    // Convert world coordinates to screen coordinates (includes scaling)
-    int worldToScreenX(double wx) {
-        double camLeft = x - virtualVw / 2.0;
-        return (int) Math.floor((wx - camLeft) * zoom);
-    }
-
-    int worldToScreenY(double wy) {
-        double camTop = y - virtualVh / 2.0;
-        return (int) Math.floor((wy - camTop) * zoom);
-    }
-
 }
+
+
