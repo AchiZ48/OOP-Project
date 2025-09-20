@@ -503,34 +503,100 @@ public class GamePanel extends JPanel {
             g.setTransform(oldTransform);
         }
     }
+    // สมมติ Player มี: name, level, hp, maxHp, mp, maxMp, BufferedImage portrait
     void drawHUD(Graphics2D g) {
         if (party == null || party.isEmpty()) return;
 
-        // HUD background
-        g.setColor(new Color(0, 0, 0, 160));
-        g.fillRoundRect(25, 285, 155, 65, 8, 8);
+        int panelW = 120, panelH = 25, gap = 5;
+        int x = 12, y = 260; // ขยับตำแหน่ง HUD ได้ตามใจ
 
-        // HUD content
-        g.setColor(Color.WHITE);
-        g.setFont(FontCustom.PressStart2P.deriveFont(7f));
-
-        for (int i = 0; i < party.size(); i++) {
+        for (int i = 0; i < Math.min(3, party.size()); i++) {
             Player p = party.get(i);
-            int y0 = 300 + i * 20;
-            String prefix = (i == activeIndex) ? "> " : "  ";
-            String info = String.format("%s%s LV%d HP:%d/%d",
-                    prefix, p.name, p.level, p.hp, p.maxHp);
-            g.drawString(info, 16, y0);
+            int yy = y + i * (panelH + gap);
+            drawStatPanel(g, x+i*gap, yy, panelW, panelH, p, i == activeIndex);
         }
-        g.setFont(FontCustom.PressStart2P.deriveFont(8f));
-        // Show zoom level
         g.setColor(Color.CYAN);
         g.drawString(String.format("Zoom: %.2fx", camera.getZoom()), 16, 16);
         g.drawString(String.format("X: %.2f Y: %.2f", party.get(activeIndex).getPreciseX(), party.get(activeIndex).getPreciseY()) , 128, 16);
+    }
 
-//        g.setColor(Color.LIGHT_GRAY);
-//
-//        g.drawString("Controls: 1/2/3=Switch | B=Battle | +/-=Zoom | 0=Reset", 16, 120);
+    private void drawStatPanel(Graphics2D g, int x, int y, int w, int h, Player p, boolean active) {
+        // เงา
+        g.setColor(new Color(0, 0, 0, 150));
+        g.fillRoundRect(x + 2, y + 3, w, h, 8, 8);
+
+        // พื้นหลังโทนฟ้าดำ
+        Paint old = g.getPaint();
+        g.setPaint(new GradientPaint(x, y, new Color(20, 28, 44, 230),
+                x, y + h, new Color(14, 18, 28, 230)));
+        g.fillRoundRect(x, y, w, h, 8, 8);
+        g.setPaint(old);
+
+        // รูปตัวละครซ้าย
+        int portrait = h - 14;
+        int px = x + 8, py = y + 7;
+
+
+        // เส้นแบ่ง
+        g.setColor(new Color(0, 0, 0, 140));
+        g.fillRoundRect(px + portrait + 6, y + 6, 2, h - 12, 2, 2);
+
+        // พื้นที่ข้อความ/แถบ
+        int contentX = px + portrait + 12;
+        g.setFont(FontCustom.PressStart2P.deriveFont(7f));
+
+        // ป้าย HP/MP
+        g.setColor(new Color(255, 255, 255));
+        g.drawString("HP", contentX+2, y + 12);
+
+        // ค่าตัวเลขชิดขวา
+        String hpVal = String.valueOf(Math.max(0, p.hp));
+        FontMetrics fm = g.getFontMetrics();
+        int rightPad = 10;
+        int valRightX = x + w - rightPad;
+
+        g.setColor(Color.WHITE);
+        g.drawString(hpVal, valRightX - fm.stringWidth(hpVal), y + 12);
+
+        // คำนวณความกว้างแถบให้เหลือที่สำหรับตัวเลข
+        int barX = contentX - 2;                 // เว้นหลังคำว่า HP/MP
+        int barW = (w - 34);
+        int barH = 7;
+
+        // แถบ HP (ส้ม) และ MP (ชมพู)
+        drawBar(g, barX, y + 13,  barW, barH,
+                p.hp, p.maxHp,
+                new Color(255, 187, 88),  // สว่าง
+                new Color(255, 0, 0)); // เข้ม
+
+        // เส้นกรอบเรืองแสงถ้าเป็นตัวที่ active
+        if (active) {
+            Stroke oldS = g.getStroke();
+            g.setStroke(new BasicStroke(1f));
+            g.setColor(new Color(90, 200, 255, 180));
+            g.drawRoundRect(x, y, w, h, 8, 8);
+            g.setStroke(oldS);
+        }
+    }
+
+    private void drawBar(Graphics2D g, int x, int y, int w, int h,
+                         int value, int max,
+                         Color cLight, Color cDark) {
+        value = Math.max(0, Math.min(value, Math.max(1, max)));
+        max   = Math.max(1, max);
+
+        // ราง
+        g.setColor(new Color(30, 30, 35));
+        g.fillRoundRect(x, y, w, h, 3, 3);
+
+        // เติมเปอร์เซ็นต์
+        int fillW = (int) Math.round((w - 2) * (value / (double) max));
+        if (fillW > 0) {
+            Paint old = g.getPaint();
+            g.setPaint(new GradientPaint(x, y, cLight, x+w, y, cDark, false));
+            g.fillRoundRect(x + 1, y + 1, fillW, h - 2, 3, 3);
+            g.setPaint(old);
+        }
     }
 }
 
