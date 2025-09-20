@@ -83,6 +83,14 @@ public class Camera {
         targetZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
     }
 
+    public double getViewWidth() {
+        return virtualVw;
+    }
+
+    public double getViewHeight() {
+        return virtualVh;
+    }
+
     public double getZoom() {
         return zoom;
     }
@@ -141,5 +149,6 @@ public class Camera {
     }
 
 }
+
 
 
