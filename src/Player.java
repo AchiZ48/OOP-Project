@@ -23,7 +23,7 @@ class Player extends Entity {
 
     private Direction facing = Direction.DOWN;
     private static final double COLLIDER_INSET = 6.0;
-    private static final double FOOT_HEIGHT = 16.0;
+    private static final double FOOT_HEIGHT = 0;
 
 
     public Player(String name, SpriteAnim spr, double x, double y) {
