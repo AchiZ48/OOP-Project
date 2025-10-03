@@ -30,7 +30,7 @@ public class GamePanel extends JPanel {
     InputManager input;
     Thread gameThread;
     volatile boolean running = false;
-    final double LOGIC_FPS = 120;
+    final double LOGIC_FPS = 60;
     final double LOGIC_DT = 1.0/LOGIC_FPS;
 
     public GamePanel(int virtualWidth, int virtualHeight) {
@@ -221,6 +221,7 @@ public class GamePanel extends JPanel {
             // Repaint only once per frame, only if needed
             if (needsRepaint) {
                 repaint();
+
                 needsRepaint = false;
                 frameCount++;
             }
@@ -358,17 +359,14 @@ public class GamePanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g0) {
         super.paintComponent(g0);
-
         // --- World back buffer ---
         Graphics2D gWorld = worldBackBuffer.createGraphics();
-        gWorld.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
         gWorld.setColor(new Color(0x2b2b2b));
         gWorld.fillRect(0, 0, worldBackBuffer.getWidth(), worldBackBuffer.getHeight());
 
         // --- HUD / UI back buffer ---
         Graphics2D gUI = HUDBackBuffer.createGraphics();
-        gUI.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-        gUI.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+
 
         // --- เคลียร์ HUDBackBuffer ทุกครั้งก่อนวาดใหม่ ---
         gUI.setComposite(AlphaComposite.Clear);
@@ -397,7 +395,7 @@ public class GamePanel extends JPanel {
             gError.drawString("Render Error: " + e.getMessage(), 10, 30);
         }
 
-        gWorld.dispose();
+//        gWorld.dispose();
         gUI.dispose();
 
         // --- Compose final screen ---
@@ -433,6 +431,8 @@ public class GamePanel extends JPanel {
         if (showPauseOverlay && (state == State.WORLD || state == State.BATTLE)) {
             drawPauseMenu(g2); // new method
         }
+
+
     }
     void drawPauseMenu(Graphics2D g) {
         int menuWidth = 220, menuHeight = 140;
@@ -502,9 +502,11 @@ public class GamePanel extends JPanel {
         } finally {
             g.setTransform(oldTransform);
         }
+
     }
     // สมมติ Player มี: name, level, hp, maxHp, mp, maxMp, BufferedImage portrait
-    void drawHUD(Graphics2D g) {
+
+    void   drawHUD(Graphics2D g) {
         if (party == null || party.isEmpty()) return;
 
         int panelW = 120, panelH = 25, gap = 5;

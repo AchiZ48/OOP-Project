@@ -6,7 +6,7 @@ public abstract class Entity implements Serializable {
     double x, y;
     int w, h;
     double posX, posY;
-    SpriteAnim sprite;
+    Sprite sprite;
     int hp, maxHp, level, exp, str, def;
     int id;
 
@@ -35,5 +35,3 @@ public abstract class Entity implements Serializable {
         sprite.draw(g, x, y, w, h);
     }
 }
-
-

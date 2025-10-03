@@ -1,5 +1,8 @@
-import javax.swing.*;
+import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -9,8 +12,8 @@ import java.util.Map;
 
 public class BattleScreen {
     GamePanel gp;
-    ImageIcon backgroundImage;
-    ImageIcon nameBannerImage;
+    Sprite backgroundSprite;
+    Sprite nameBannerSprite;
     List<Player> party;
     Enemy enemy;
     int currentPlayerIndex = 0;
@@ -18,7 +21,7 @@ public class BattleScreen {
     int selectedSkill = 0;
     boolean waitingForInput = true;
     String lastAction = "";
-    final Map<String, ImageIcon> backSpriteCache = new HashMap<>();
+    final Map<String, Sprite> backSpriteCache = new HashMap<>();
 
     static class Skill {
         String name;
@@ -33,18 +36,31 @@ public class BattleScreen {
 
     public BattleScreen(GamePanel gp) {
         this.gp = gp;
-        backgroundImage = new ImageIcon("resources/battlebg/bg1.gif");
-        backgroundImage.setImageObserver(gp);
 
-        ImageIcon nameIcon = new ImageIcon("resources/battlebg/name_back.gif");
-        nameIcon.setImageObserver(gp);
-        nameBannerImage = nameIcon.getIconWidth() > 0 ? nameIcon : null;
+        double backgroundFps = 8.0;
+        try {
+            backgroundSprite = SpriteLoader.loadSheet("resources/battlebg/bg1.png", 640, 360, 8);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+//        nameBannerSprite = loadSprite("resources/sprites/bluu_back.png", 8, 1, 8);
 
         skills = Arrays.asList(
                 new Skill("Strike", 1, 6, "Basic physical attack"),
-                new Skill("Power Attack", 2, 10, "Strong physical attack"),
+                new Skill("Power Attack", 5, 10, "Strong physical attack"),
                 new Skill("Guard", 1, 0, "Reduce incoming damage")
         );
+    }
+    private Sprite loadSprite(String path, int frameW, int framH, int fps) {
+        try {
+            return SpriteLoader.loadSheet(path, frameW, framH, fps);
+
+
+        } catch (IOException e) {
+            System.err.println("Failed to load sprite at " + path + ": " + e.getMessage());
+            return null;
+        }
     }
     void startBattle(List<Player> party, Enemy enemy) {
         this.party = new ArrayList<>(party);
@@ -68,8 +84,19 @@ public class BattleScreen {
             return;
         }
 
-        if (party == null || party.isEmpty() || enemy == null) return;
+        if (backgroundSprite != null) {
+            backgroundSprite.update(dt);
+        }
+        if (nameBannerSprite != null) {
+            nameBannerSprite.update(dt);
+        }
+        for (Sprite sprite : backSpriteCache.values()) {
+            if (sprite != null) {
+                sprite.update(dt);
+            }
+        }
 
+        if (party == null || party.isEmpty() || enemy == null) return;
         // Check win/lose conditions
         if (enemy.hp <= 0) {
             lastAction = "Victory! " + enemy.name + " defeated!";
@@ -172,14 +199,19 @@ public class BattleScreen {
         System.out.println(lastAction);
     }
 
+
     void draw(Graphics2D g) {
         // Background
         g.setColor(new Color(6, 6, 30));
         g.fillRect(0, 0, gp.vw, gp.vh);
-
-        if (backgroundImage != null) {
-            drawImageAspectFit(g, backgroundImage.getImage());
+        backgroundSprite.draw(g,0,0,640,360);
+        Image image;
+        try {
+            image = ImageIO.read(new File("resources/sprites/Alice.png"));
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         }
+        g.drawImage(image,0, 0 , null);
 
         // Battle title
         g.setColor(Color.WHITE);
@@ -229,23 +261,25 @@ public class BattleScreen {
 
         // Player selection panel (bottom)
         int panelH = 120;
-        ImageIcon backSprite = null;
+        Sprite backSprite = null;
         int spriteAnchorX = 40;
-        int spriteBaseY = gp.vh - 20;
-        int spriteBoxW = 180;
-        int spriteBoxH = 150;
+        int spriteBaseY = gp.vh;
+        int spriteBoxW = 384;
+        int spriteBoxH = 250;
 
         if (party != null && !party.isEmpty() && currentPlayerIndex >= 0 && currentPlayerIndex < party.size()) {
             backSprite = getBackSpriteFor(party.get(currentPlayerIndex));
         }
 
-        if (backSprite != null && backSprite.getIconWidth() > 0 && backSprite.getIconHeight() > 0) {
-            double scale = Math.min(1.0, Math.min(spriteBoxW / (double) backSprite.getIconWidth(), spriteBoxH / (double) backSprite.getIconHeight()));
-            int drawW = Math.max(1, (int) Math.round(backSprite.getIconWidth() * scale));
-            int drawH = Math.max(1, (int) Math.round(backSprite.getIconHeight() * scale));
-            int drawX = spriteAnchorX;
+        if (backSprite != null) {
+            int frameW = Math.max(1, backSprite.getFrameWidth());
+            int frameH = Math.max(1, backSprite.getFrameHeight());
+            double scale = Math.min(1.0, Math.min(spriteBoxW / (double) frameW, spriteBoxH / (double) frameH));
+            int drawW = Math.max(1, (int) Math.round(frameW * scale));
+            int drawH = Math.max(1, (int) Math.round(frameH * scale));
+            int drawX = spriteAnchorX + 30;
             int drawY = spriteBaseY - drawH;
-            g.drawImage(backSprite.getImage(), drawX, drawY, drawW, drawH, gp);
+            backSprite.draw(g, drawX, drawY, drawW, drawH);
         }
 
         int panelY = gp.vh - panelH - 40;
@@ -268,14 +302,14 @@ public class BattleScreen {
         }
 
         int skillY = panelY + 32;
-        if (bannerName != null && nameBannerImage != null && nameBannerImage.getIconWidth() > 0) {
-            int bannerW = nameBannerImage.getIconWidth();
-            int bannerH = nameBannerImage.getIconHeight();
+        if (bannerName != null && nameBannerSprite != null) {
+            int bannerW = Math.max(1, nameBannerSprite.getFrameWidth());
+            int bannerH = Math.max(1, nameBannerSprite.getFrameHeight());
             int bannerX = panelX + Math.max(10, (panelW - bannerW) / 2);
             int bannerY = skillY - bannerH - 12;
-            g.drawImage(nameBannerImage.getImage(), bannerX, bannerY, gp);
+            nameBannerSprite.draw(g, bannerX, bannerY, bannerW, bannerH);
             g.setColor(Color.WHITE);
-            g.setFont(new Font("Monospaced", Font.BOLD, 16));
+            g.setFont(new Font("Monospaced", Font.PLAIN, 16));
             FontMetrics fmBanner = g.getFontMetrics();
             int textX = bannerX + (bannerW - fmBanner.stringWidth(bannerName)) / 2;
             int textY = bannerY + (bannerH + fmBanner.getAscent()) / 2 - 4;
@@ -283,7 +317,7 @@ public class BattleScreen {
         }
 
         g.setColor(Color.WHITE);
-        g.setFont(new Font("Monospaced", Font.BOLD, 14));
+        g.setFont(new Font("Monospaced", Font.PLAIN, 14));
         int skillHeaderX = Math.max(skillTextX - 10, panelX + 10);
         g.drawString("Skills (Use 1/2/3 or Up/Down + Enter):", skillHeaderX, skillY);
 
@@ -310,7 +344,7 @@ public class BattleScreen {
         g.drawString("ESC: Flee | Enter: Use Skill", gp.vw - 200, gp.vh - 10);
     }
 
-    private ImageIcon getBackSpriteFor(Player player) {
+    private Sprite getBackSpriteFor(Player player) {
         if (player == null || player.name == null) {
             return null;
         }
@@ -318,53 +352,33 @@ public class BattleScreen {
         if (normalized.isEmpty()) {
             return null;
         }
-        if (!backSpriteCache.containsKey(normalized)) {
-            backSpriteCache.put(normalized, loadBackSprite(normalized));
+        Sprite sprite = backSpriteCache.get(normalized);
+        if (sprite == null) {
+            sprite = loadBackSprite(normalized);
+            backSpriteCache.put(normalized, sprite);
         }
-        ImageIcon icon = backSpriteCache.get(normalized);
-        if (icon == null) {
-            return null;
-        }
-        return (icon.getIconWidth() > 0 && icon.getIconHeight() > 0) ? icon : null;
+        return sprite;
     }
 
-    private ImageIcon loadBackSprite(String nameKey) {
+    private Sprite loadBackSprite(String nameKey) {
         if (nameKey == null || nameKey.isEmpty()) {
             return null;
         }
-        String pathStr = "resources/sprites/" + nameKey + "_back.gif";
-        ImageIcon icon = new ImageIcon(pathStr);
-        icon.setImageObserver(gp);
-        return icon.getIconWidth() > 0 ? icon : null;
+        String pathStr = "resources/sprites/" + nameKey + "_back.png";
+        Sprite sprite = loadSprite(pathStr, 274, 326, 8);
+        return sprite != null ? sprite : createPlaceholderSprite(64, 64, Color.MAGENTA);
     }
 
-
-    private void drawImageAspectFit(Graphics2D g, Image img) {
-        if (img == null) {
-            g.setColor(Color.DARK_GRAY);
-            g.fillRect(0, 0, gp.vw, gp.vh);
-            return;
-        }
-
-        int imgW = img.getWidth(gp);
-        int imgH = img.getHeight(gp);
-        if (imgW <= 0 || imgH <= 0) {
-            g.setColor(Color.DARK_GRAY);
-            g.fillRect(0, 0, gp.vw, gp.vh);
-            return;
-        }
-
-        double scale = Math.min((double) gp.vw / imgW, (double) gp.vh / imgH);
-        int drawW = (int) Math.round(imgW * scale);
-        int drawH = (int) Math.round(imgH * scale);
-        int x = (gp.vw - drawW) / 2;
-        int y = (gp.vh - drawH) / 2;
-
-        g.drawImage(img, x, y, drawW, drawH, gp);
+    private Sprite createPlaceholderSprite(int width, int height, Color bodyColor) {
+        BufferedImage placeholder = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = placeholder.createGraphics();
+        g.setColor(bodyColor);
+        g.fillRect(0, 0, width, height);
+        g.setColor(Color.BLACK);
+        g.drawRect(0, 0, width - 1, height - 1);
+        g.dispose();
+        return Sprite.forStaticImage(placeholder);
     }
+
 }
-
-
-
-
 

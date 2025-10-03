@@ -3,12 +3,13 @@ import java.awt.image.BufferedImage;
 
 class Enemy extends Entity {
     private static final long serialVersionUID = 1L;
+    private static final int DEFAULT_SCALE = 3;
 
-    public Enemy(String name, SpriteAnim spr, double x, double y) {
+    public Enemy(String name, Sprite spr, double x, double y) {
         this.name = name;
         this.sprite = spr;
-        this.w = spr.frameW * spr.scale;
-        this.h = spr.frameH * spr.scale;
+        this.w = spr != null ? spr.getFrameWidth() * DEFAULT_SCALE : 0;
+        this.h = spr != null ? spr.getFrameHeight() * DEFAULT_SCALE : 0;
         this.maxHp = 200;
         this.hp = maxHp;
         this.level = 1;
@@ -41,7 +42,7 @@ class Enemy extends Entity {
         }
         g.dispose();
 
-        SpriteAnim spr = new SpriteAnim(bi, 16, 16, 4, 1, 3);
+        Sprite spr = Sprite.fromSheet(bi, 16, 16, 4, 1, 3);
         return new Enemy(name, spr, x, y);
     }
 

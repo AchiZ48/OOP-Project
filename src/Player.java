@@ -26,7 +26,7 @@ class Player extends Entity {
     private static final double FOOT_HEIGHT = 0;
 
 
-    public Player(String name, SpriteAnim spr, double x, double y) {
+    public Player(String name, Sprite spr, double x, double y) {
         this.name = name;
         this.sprite = spr;
         setPrecisePosition(x, y);
@@ -43,10 +43,10 @@ class Player extends Entity {
     }
 
     static Player createSample(String name, double x, double y) {
-        SpriteAnim spr;
+        Sprite spr;
         try {
             BufferedImage img = ImageIO.read(new File("resources/sprites/" + name.toLowerCase() + ".png"));
-            spr = new SpriteAnim(img, 64, 96, img.getWidth()/64, 4, img.getWidth()/64);
+            spr = Sprite.fromSheet(img, 64, 96, img.getWidth()/64, 4, img.getWidth()/64);
             System.out.println("Loaded sprite for " + name);
         } catch (Exception e) {
             BufferedImage bi = new BufferedImage(16, 32, BufferedImage.TYPE_INT_ARGB);
@@ -55,7 +55,7 @@ class Player extends Entity {
             g.drawRect(0, 0, 15, 31);
             g.dispose();
 
-            spr = new SpriteAnim(bi, 16, 16, 4, 1, 4);
+            spr = Sprite.fromSheet(bi, 16, 16, 4, 1, 4);
         }
 
         return new Player(name, spr, x, y);
@@ -113,11 +113,11 @@ class Player extends Entity {
 
             setPrecisePosition(preciseX, preciseY);
             if (sprite != null) {
-                sprite.playing = true;
+                sprite.setPlaying(true);
             }
         } else {
             if (sprite != null) {
-                sprite.playing = false;
+                sprite.setPlaying(false);
                 sprite.setFrame(0);
             }
         }
@@ -176,10 +176,10 @@ class Player extends Entity {
             setPrecisePosition(preciseX, preciseY);
             updateFacingFromVector(nx, ny);
             if (sprite != null) {
-                sprite.playing = true;
+                sprite.setPlaying(true);
             }
         } else if (sprite != null) {
-            sprite.playing = false;
+            sprite.setPlaying(false);
             sprite.setFrame(0);
         }
 
