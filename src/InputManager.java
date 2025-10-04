@@ -45,6 +45,10 @@ public class InputManager {
         registerKey(KeyEvent.VK_D, "RIGHT");
         registerKey(KeyEvent.VK_W, "UP");
         registerKey(KeyEvent.VK_S, "DOWN");
+        registerKey(KeyEvent.VK_LEFT, "LEFT");
+        registerKey(KeyEvent.VK_RIGHT, "RIGHT");
+        registerKey(KeyEvent.VK_UP, "UP");
+        registerKey(KeyEvent.VK_DOWN, "DOWN");
         registerKey(KeyEvent.VK_SHIFT, "SHIFT");
 
         // Number keys
@@ -55,6 +59,7 @@ public class InputManager {
         // Action keys
         registerKey(KeyEvent.VK_B, "B");
         registerKey(KeyEvent.VK_P, "P");
+        registerKey(KeyEvent.VK_C, "C");
         registerKey(KeyEvent.VK_EQUALS, "EQUALS");
         registerKey(KeyEvent.VK_MINUS, "MINUS");
         registerKey(KeyEvent.VK_0, "0");
@@ -64,6 +69,8 @@ public class InputManager {
         registerKey(KeyEvent.VK_ESCAPE, "ESC");
         registerKey(KeyEvent.VK_SPACE, "SPACE");
         registerKey(KeyEvent.VK_E, "E");
+        registerKey(KeyEvent.VK_Q, "Q");
+        registerKey(KeyEvent.VK_R, "R");
         registerKey(KeyEvent.VK_MULTIPLY, "*");
     }
 

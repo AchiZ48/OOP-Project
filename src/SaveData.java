@@ -10,7 +10,7 @@ class SaveData implements Serializable {
         private static final long serialVersionUID = 1L;
         String name;
         double x, y;
-        int hp, maxHp, level, exp, str, def;
+        Stats stats;
     }
 
     static SaveData fromParty(List<Player> party) {
@@ -20,12 +20,7 @@ class SaveData implements Serializable {
             pd.name = p.name;
             pd.x = p.getPreciseX();
             pd.y = p.getPreciseY();
-            pd.hp = p.hp;
-            pd.maxHp = p.maxHp;
-            pd.level = p.level;
-            pd.exp = p.exp;
-            pd.str = p.str;
-            pd.def = p.def;
+            pd.stats = p.getStats().copy();
             sd.players.add(pd);
         }
         return sd;
@@ -35,12 +30,11 @@ class SaveData implements Serializable {
         List<Player> out = new ArrayList<>();
         for (PlayerData pd : players) {
             Player p = Player.createSample(pd.name, pd.x, pd.y);
-            p.hp = pd.hp;
-            p.maxHp = pd.maxHp;
-            p.level = pd.level;
-            p.exp = pd.exp;
-            p.str = pd.str;
-            p.def = pd.def;
+            if (pd.stats != null) {
+                p.applyStats(pd.stats);
+            } else {
+                p.refreshDerivedStats();
+            }
             out.add(p);
         }
         return out;

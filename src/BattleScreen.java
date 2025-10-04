@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -21,6 +22,7 @@ public class BattleScreen {
     int selectedSkill = 0;
     boolean waitingForInput = true;
     String lastAction = "";
+    private int preparedTurnIndex = -1;
     final Map<String, Sprite> backSpriteCache = new HashMap<>();
 
     static class Skill {
@@ -62,18 +64,38 @@ public class BattleScreen {
             return null;
         }
     }
-    void startBattle(List<Player> party, Enemy enemy) {
+    void startBattle(List<Player> party, Enemy enemy, boolean ambush) {
         this.party = new ArrayList<>(party);
         this.enemy = enemy;
         this.currentPlayerIndex = 0;
         this.waitingForInput = true;
         this.selectedSkill = 0;
         this.lastAction = "Battle started vs " + enemy.name + "!";
+        this.preparedTurnIndex = -1;
 
-        // Reset enemy HP for new battle
-        enemy.hp = enemy.maxHp;
+        for (Player member : this.party) {
+            if (member == null) {
+                continue;
+            }
+            Stats stats = member.getStats();
+            stats.clearTemporaryModifiers();
+            stats.fullRestoreBattlePoints();
+            member.refreshDerivedStats();
+        }
 
-        System.out.println("Battle started vs " + enemy.name);
+        if (enemy != null) {
+            enemy.hp = enemy.maxHp;
+        }
+
+        if (ambush) {
+            this.lastAction = "Ambushed! " + enemy.name + " strikes first!";
+            performEnemyTurn();
+            this.waitingForInput = true;
+            this.currentPlayerIndex = 0;
+            this.preparedTurnIndex = -1;
+        }
+
+        System.out.println("Battle started vs " + (enemy != null ? enemy.name : "Unknown"));
     }
 
     void update(double dt) {
@@ -106,7 +128,7 @@ public class BattleScreen {
             return;
         }
 
-        boolean anyAlive = party.stream().anyMatch(p -> p.hp > 0);
+        boolean anyAlive = party.stream().anyMatch(p -> p.getStats().getCurrentHp() > 0);
         if (!anyAlive) {
             lastAction = "Defeat! All party members are down!";
             if (input.consumeIfPressed("ENTER") || input.consumeIfPressed("ESC")) {
@@ -118,7 +140,13 @@ public class BattleScreen {
         // Player turn
         if (currentPlayerIndex < party.size() && waitingForInput) {
             Player currentPlayer = party.get(currentPlayerIndex);
-            if (currentPlayer.hp <= 0) {
+            if (preparedTurnIndex != currentPlayerIndex) {
+                Stats currentStats = currentPlayer.getStats();
+                currentStats.restoreBattlePoints(1);
+                currentPlayer.refreshDerivedStats();
+                preparedTurnIndex = currentPlayerIndex;
+            }
+            if (currentPlayer.getStats().getCurrentHp() <= 0) {
                 // Skip knocked out players
                 nextTurn();
                 return;
@@ -148,54 +176,82 @@ public class BattleScreen {
 
     void nextTurn() {
         currentPlayerIndex++;
+        waitingForInput = true;
+        preparedTurnIndex = -1;
         if (currentPlayerIndex >= party.size()) {
             // All players have acted, enemy turn
             performEnemyTurn();
             currentPlayerIndex = 0;
         }
-        waitingForInput = true;
     }
 
     void performPlayerSkill(Player player, Skill skill) {
-        if ("Guard".equals(skill.name)) {
-            // Defensive action
-            player.def += 2; // Temporary defense boost
-            lastAction = player.name + " guards defensively!";
-        } else {
-            // Attack action
-            int damage = Math.max(1, player.str + skill.power - enemy.def);
-            enemy.hp = Math.max(0, enemy.hp - damage);
-            lastAction = player.name + " used " + skill.name + " for " + damage + " damage!";
+        if (player == null || skill == null) {
+            return;
+        }
+        Stats stats = player.getStats();
+        if (!stats.spendBattlePoints(Math.max(0, skill.cost))) {
+            lastAction = player.name + " lacks BP for " + skill.name + "!";
+            if (gp != null) {
+                gp.playSfx("bp_fail");
+            }
+            waitingForInput = true;
+            return;
         }
 
-        System.out.println(lastAction + " (Enemy HP: " + enemy.hp + "/" + enemy.maxHp + ")");
+        if ("Guard".equals(skill.name)) {
+            stats.applyTemporaryModifier(Collections.singletonMap(Stats.StatType.DEFENSE, 4));
+            lastAction = player.name + " braces for impact!";
+            if (gp != null) {
+                gp.playSfx("guard");
+            }
+        } else {
+            int strength = stats.getTotalValue(Stats.StatType.STRENGTH);
+            int damage = Math.max(1, strength + skill.power - enemy.def);
+            enemy.hp = Math.max(0, enemy.hp - damage);
+            lastAction = player.name + " used " + skill.name + " for " + damage + " damage!";
+            if (gp != null) {
+                gp.playSfx("skill_strike");
+            }
+        }
+
+        stats.regenerateBattlePoints(0.08);
+        player.refreshDerivedStats();
+        preparedTurnIndex = -1;
         waitingForInput = false;
+        System.out.println(lastAction + " (Enemy HP: " + enemy.hp + "/" + enemy.maxHp + ")");
     }
 
     void performEnemyTurn() {
         // Find a living target
         List<Player> aliveParty = party.stream()
-                .filter(p -> p.hp > 0)
+                .filter(p -> p.getStats().getCurrentHp() > 0)
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
 
         if (aliveParty.isEmpty()) return;
 
         Player target = aliveParty.get((int)(Math.random() * aliveParty.size()));
-        int damage = Math.max(1, enemy.str - target.def);
-        target.hp = Math.max(0, target.hp - damage);
+        Stats targetStats = target.getStats();
+        int defense = targetStats.getTotalValue(Stats.StatType.DEFENSE);
+        int damage = Math.max(1, enemy.str - defense);
+        targetStats.takeDamage(damage);
+        target.refreshDerivedStats();
 
         lastAction = enemy.name + " attacks " + target.name + " for " + damage + " damage!";
-        if (target.hp <= 0) {
+        if (targetStats.getCurrentHp() <= 0) {
             lastAction += " " + target.name + " is knocked out!";
         }
 
-        // Reset temporary defense boosts
         for (Player p : party) {
-            if (p.def > (p.level + 2)) { // Original defense + guard bonus
-                p.def = Math.max(2, p.level + 2);
-            }
+            Stats stats = p.getStats();
+            stats.clearTemporaryModifiers();
+            p.refreshDerivedStats();
         }
 
+        if (gp != null) {
+            gp.playSfx("enemy_attack");
+        }
+        preparedTurnIndex = -1;
         System.out.println(lastAction);
     }
 
@@ -255,8 +311,14 @@ public class BattleScreen {
         g.setFont(new Font("Monospaced", Font.BOLD, 16));
         for (int i = 0; i < party.size(); i++) {
             Player p = party.get(i);
-            g.setColor(p.hp > 0 ? Color.WHITE : Color.DARK_GRAY);
-            g.drawString(p.name + "  HP:" + p.hp + "/" + p.maxHp, partyX, partyY + i * lineHeight);
+            Stats stats = p.getStats();
+            int currentHp = stats.getCurrentHp();
+            int maxHp = stats.getMaxHp();
+            int currentBp = stats.getCurrentBattlePoints();
+            int maxBp = stats.getMaxBattlePoints();
+            g.setColor(currentHp > 0 ? Color.WHITE : Color.DARK_GRAY);
+            String line = String.format("%s  HP:%d/%d  BP:%d/%d", p.name, currentHp, maxHp, currentBp, maxBp);
+            g.drawString(line, partyX, partyY + i * lineHeight);
         }
 
         // Player selection panel (bottom)

@@ -3,6 +3,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.Serial;
+import java.util.Locale;
 
 class Player extends Entity {
     @Serial
@@ -24,7 +25,7 @@ class Player extends Entity {
     private Direction facing = Direction.DOWN;
     private static final double COLLIDER_INSET = 6.0;
     private static final double FOOT_HEIGHT = 0;
-
+    private final Stats stats;
 
     public Player(String name, Sprite spr, double x, double y) {
         this.name = name;
@@ -32,14 +33,34 @@ class Player extends Entity {
         setPrecisePosition(x, y);
         this.w = 32;
         this.h = 64;
-        this.maxHp = 30;
-        this.hp = maxHp;
-        this.level = 1;
-        this.exp = 0;
-        this.str = 5;
-        this.def = 2;
+        this.stats = Stats.createDefault();
+        refreshDerivedStats();
 
         applyFacingToSprite();
+    }
+
+    Stats getStats() {
+        return stats;
+    }
+
+    void refreshDerivedStats() {
+        if (stats == null) {
+            return;
+        }
+        maxHp = stats.getMaxHp();
+        hp = stats.getCurrentHp();
+        level = stats.getLevel();
+        exp = stats.getExp();
+        str = stats.getTotalValue(Stats.StatType.STRENGTH);
+        def = stats.getTotalValue(Stats.StatType.DEFENSE);
+    }
+
+    void applyStats(Stats newStats) {
+        if (newStats == null) {
+            return;
+        }
+        stats.copyFrom(newStats);
+        refreshDerivedStats();
     }
 
     static Player createSample(String name, double x, double y) {
@@ -58,11 +79,35 @@ class Player extends Entity {
             spr = Sprite.fromSheet(bi, 16, 16, 4, 1, 4);
         }
 
-        return new Player(name, spr, x, y);
+        Player player = new Player(name, spr, x, y);
+        Stats stats = player.getStats();
+        switch (name.toLowerCase(Locale.ROOT)) {
+            case "bluu":
+                stats.setBaseValue(Stats.StatType.ARCANE, 7);
+                stats.setBaseValue(Stats.StatType.SPEED, 6);
+                break;
+            case "souri":
+                stats.setBaseValue(Stats.StatType.SPEED, 8);
+                stats.setBaseValue(Stats.StatType.LUCK, 6);
+                stats.setBaseValue(Stats.StatType.DEFENSE, 4);
+                break;
+            case "bob":
+                stats.setBaseValue(Stats.StatType.STRENGTH, 7);
+                stats.setBaseValue(Stats.StatType.DEFENSE, 6);
+                stats.setBaseValue(Stats.StatType.MAX_HP, 36);
+                break;
+            default:
+                break;
+        }
+        stats.fullHeal();
+        stats.fullRestoreBattlePoints();
+        player.refreshDerivedStats();
+        return player;
     }
 
     public void updateWithInput(InputManager input, TileMap map, double dt) {
-        double speed = 120;
+        double baseSpeed = 90 + stats.getTotalValue(Stats.StatType.SPEED) * 6;
+        double speed = baseSpeed;
         int dx = 0, dy = 0;
 
         if (input.isPressed("LEFT")) dx -= 1;
@@ -70,7 +115,7 @@ class Player extends Entity {
         if (input.isPressed("UP")) dy -= 1;
         if (input.isPressed("DOWN")) dy += 1;
         if (input.isPressed("SHIFT")) {
-            speed = 180;
+            speed *= 1.4;
         }
 
         updateFacingFromInput(input);
@@ -138,7 +183,7 @@ class Player extends Entity {
         double dx = targetX - preciseX;
         double dy = targetY - preciseY;
         double distance = Math.sqrt(dx * dx + dy * dy);
-        double followSpeed = 200;
+        double followSpeed = 140 + stats.getTotalValue(Stats.StatType.SPEED) * 6;
 
         boolean shouldMove = distance > Math.max(8.0, spacing);
         if (shouldMove && distance > 1e-6) {
