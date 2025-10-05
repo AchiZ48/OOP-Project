@@ -6,7 +6,9 @@ class MedicNPC extends NPC {
     private final int freeHealsPerRest;
     private int freeHealsRemaining;
     private final int premiumCost;
-    private final String questId = "quest_medic_herbs";
+    private final int supplyCost = 40;
+    private final int essenceBonus = 2;
+    private final String questId = "quest_medic_supplies";
 
     MedicNPC(String id, String name, Sprite sprite, double x, double y) {
         super(id, name, sprite, x, y, WIDTH, HEIGHT);
@@ -91,10 +93,10 @@ class MedicNPC extends NPC {
                 "medic",
                 null,
                 java.util.List.of(
-                        new DialogChoice("I can gather the herbs.", "quest_accept",
+                        new DialogChoice("I can fund your supplies.", "quest_accept",
                                 ctx -> offerQuest(ctx),
                                 ctx -> canOfferQuest(ctx)),
-                        new DialogChoice("I found the herbs you wanted.", "quest_complete",
+                        new DialogChoice("I brought the gold you need.", "quest_complete",
                                 ctx -> completeQuest(ctx),
                                 ctx -> canCompleteQuest(ctx)),
                         new DialogChoice("Maybe later.", "exit")
@@ -106,7 +108,7 @@ class MedicNPC extends NPC {
         DialogNode questAccept = new DialogNode(
                 "quest_accept",
                 name,
-                "Bring me three sprigs of dawnblossom from the forest glade. They glow faintly at night.",
+                "Bring me 40 gold so I can restock proper supplies.",
                 "medic",
                 "exit",
                 java.util.Collections.emptyList(),
@@ -117,7 +119,7 @@ class MedicNPC extends NPC {
         DialogNode questComplete = new DialogNode(
                 "quest_complete",
                 name,
-                "Marvelous work! The party will appreciate a proper tonic.",
+                "Marvelous work! The party will appreciate the fresh supplies.",
                 "medic",
                 "exit",
                 java.util.Collections.emptyList(),
@@ -178,7 +180,7 @@ class MedicNPC extends NPC {
         }
         Quest quest = manager.getQuest(questId);
         return quest != null && quest.getStatus() == QuestStatus.ACTIVE
-                && context.getGamePanel().hasInventoryItem("herb_dawnblossom", 3);
+                && context.getGold() >= supplyCost;
     }
 
     private void offerQuest(InteractionContext context) {
@@ -188,12 +190,12 @@ class MedicNPC extends NPC {
         }
         Quest quest = manager.getQuest(questId);
         if (quest == null) {
-            quest = new Quest(questId, "Medic Supplies", "Gather three dawnblossom herbs for the medic.", 60);
+            quest = new Quest(questId, "Medic Supplies", "Contribute 40 gold to restock the medic's satchel.", 60);
             manager.registerQuest(quest);
         }
         quest.setStatus(QuestStatus.ACTIVE);
         context.queueMessage("Quest accepted: Medic Supplies");
-        context.getGamePanel().markQuestTarget("herb_dawnblossom");
+        context.queueMessage("Bring " + supplyCost + " gold back to Selene.");
     }
 
     private void completeQuest(InteractionContext context) {
@@ -205,29 +207,38 @@ class MedicNPC extends NPC {
         if (quest == null) {
             return;
         }
+        if (!context.spendGold(supplyCost)) {
+            context.queueMessage("You still need more gold for the supplies.");
+            return;
+        }
         quest.setStatus(QuestStatus.COMPLETED);
-        context.getGamePanel().consumeInventoryItem("herb_dawnblossom", 3);
         int reward = quest.getRewardGold();
         context.addGold(reward);
+        if (essenceBonus > 0) {
+            context.addEssence(essenceBonus);
+        }
         context.unlockFastTravel("ruins");
         context.queueMessage("Ruins waypoint is now attuned.");
         context.queueMessage("Received " + reward + " gold for helping the medic.");
+        if (essenceBonus > 0) {
+            context.queueMessage("Gained " + essenceBonus + " essence for your generosity.");
+        }
     }
 
     private String questText(InteractionContext context) {
         QuestManager manager = context.getQuestManager();
         if (manager == null) {
-            return "I am running low on herbs, but I suppose that is not your concern.";
+            return "I am running low on supplies, but I suppose that is not your concern.";
         }
         Quest quest = manager.getQuest(questId);
         if (quest == null || quest.getStatus() == QuestStatus.AVAILABLE) {
-            return "If you have a moment, I could use a few rare herbs from the glade.";
+            return "If you can spare " + supplyCost + " gold, I could restock my supplies.";
         }
         if (quest.getStatus() == QuestStatus.ACTIVE) {
-            return "Have you gathered the dawnblossom sprigs yet?";
+            return "Have you gathered the " + supplyCost + " gold yet?";
         }
         if (quest.getStatus() == QuestStatus.COMPLETED) {
-            return "Thanks again for the herbs. The tinctures are working wonders.";
+            return "Thanks again for covering the supply costs. The tinctures are flowing.";
         }
         return "Stay healthy out there.";
     }
@@ -236,4 +247,3 @@ class MedicNPC extends NPC {
         freeHealsRemaining = freeHealsPerRest;
     }
 }
-
