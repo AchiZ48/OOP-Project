@@ -1,15 +1,13 @@
 class ChestObject extends WorldObject {
-    private final int goldReward;
-    private final String equipmentId;
-    private final String inventoryItemId;
-    private final int inventoryAmount;
+    private final int baseGold;
+    private final int baseEssence;
+    private final boolean grantsBossKey;
 
-    ChestObject(String id, double x, double y, int width, int height, Sprite sprite, int goldReward, String equipmentId, String inventoryItemId, int inventoryAmount) {
+    ChestObject(String id, double x, double y, int width, int height, Sprite sprite, int baseGold, int baseEssence, boolean grantsBossKey) {
         super(id, "chest", x, y, width, height, sprite);
-        this.goldReward = Math.max(0, goldReward);
-        this.equipmentId = equipmentId;
-        this.inventoryItemId = inventoryItemId;
-        this.inventoryAmount = Math.max(0, inventoryAmount);
+        this.baseGold = Math.max(0, baseGold);
+        this.baseEssence = Math.max(0, baseEssence);
+        this.grantsBossKey = grantsBossKey;
         setPrompt("Open Chest");
         setInteractionPriority(3);
     }
@@ -24,26 +22,36 @@ class ChestObject extends WorldObject {
             context.queueMessage("You already emptied this chest.");
             return;
         }
+
+        GamePanel panel = context.getGamePanel();
+        int goldReward = baseGold;
+        int essenceReward = baseEssence;
+        if (panel != null) {
+            goldReward = panel.scaleChestGold(baseGold);
+            essenceReward = panel.scaleChestEssence(baseEssence);
+        }
+
         context.playSfx("chest_open");
         if (goldReward > 0) {
             context.addGold(goldReward);
             context.queueMessage("Received " + goldReward + " gold.");
         }
-        if (equipmentId != null) {
-            EquipmentItem item = EquipmentCatalog.create(equipmentId);
-            if (item != null) {
-                context.grantItemToLeader(item);
-                context.queueMessage("Found " + item.getDisplayName() + "!");
+        if (essenceReward > 0) {
+            context.addEssence(essenceReward);
+            context.queueMessage("Absorbed " + essenceReward + " essence.");
+        }
+
+        if (grantsBossKey && panel != null) {
+            if (panel.addBossKey()) {
+                context.queueMessage("Boss key acquired (" + panel.getBossKeys() + "/" + panel.getBossKeysRequired() + ").");
+            } else {
+                context.queueMessage("You already hold all boss keys.");
             }
         }
-        if (inventoryItemId != null && inventoryAmount > 0) {
-            context.addInventoryItem(inventoryItemId, inventoryAmount);
-            context.queueMessage("Stored " + inventoryAmount + " " + inventoryItemId.replace('_', ' ') + ".");
-        }
+
         setFlag(StateFlag.OPEN, true);
         setFlag(StateFlag.CONSUMED, true);
         setFlag(StateFlag.USABLE, false);
         setPrompt("Empty Chest");
     }
 }
-

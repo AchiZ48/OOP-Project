@@ -1,16 +1,13 @@
-
 import java.awt.Color;
 import java.awt.Graphics2D;
 
 class DoorObject extends WorldObject {
     private boolean locked;
     private boolean open;
-    private final String requiredItemId;
 
-    DoorObject(String id, double x, double y, int width, int height, Sprite sprite, boolean locked, String requiredItemId) {
+    DoorObject(String id, double x, double y, int width, int height, Sprite sprite, boolean locked) {
         super(id, "door", x, y, width, height, sprite);
         this.locked = locked;
-        this.requiredItemId = requiredItemId;
         this.open = false;
         if (locked) {
             setFlag(StateFlag.LOCKED, true);
@@ -25,10 +22,6 @@ class DoorObject extends WorldObject {
 
     boolean isOpen() {
         return open;
-    }
-
-    String getRequiredItemId() {
-        return requiredItemId;
     }
 
     void setLocked(boolean locked) {
@@ -58,15 +51,9 @@ class DoorObject extends WorldObject {
     @Override
     protected void onInteract(InteractionContext context) {
         if (locked) {
-            if (requiredItemId != null && context.consumeInventoryItem(requiredItemId, 1)) {
-                setLocked(false);
-                context.queueMessage("Unlocked the door using " + requiredItemId.replace('_', ' ') + ".");
-                context.playSfx("door_unlock");
-            } else {
-                context.queueMessage("The door is locked.");
-                context.playSfx("door_locked");
-                return;
-            }
+            context.queueMessage("The door is locked.");
+            context.playSfx("door_locked");
+            return;
         }
         boolean newState = !open;
         setOpenState(newState);
