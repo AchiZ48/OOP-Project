@@ -5,7 +5,6 @@ class PlacementManager {
     enum PlacementType {
         CHEST,
         DOOR,
-        HERB_PATCH,
         WAYPOINT
     }
 
@@ -33,14 +32,14 @@ class PlacementManager {
     }
 
     private void registerDefaults() {
-        register(PlacementType.CHEST, "Chest", (id, player, sequence) ->
-                WorldObjectFactory.createChest(id, player.getPreciseX() + 32, player.getPreciseY(), 20, "bluu_sigil"));
+        register(PlacementType.CHEST, "Chest", (id, player, sequence) -> {
+            int gold = 20 + (sequence % 3) * 10;
+            int essence = sequence % 2 == 0 ? 1 : 0;
+                        return WorldObjectFactory.createChest(id, player.getPreciseX() + 32, player.getPreciseY(), gold, essence, false);
+        });
 
         register(PlacementType.DOOR, "Door", (id, player, sequence) ->
-                WorldObjectFactory.createDoor(id, player.getPreciseX() + 16, player.getPreciseY(), sequence % 2 == 0, null));
-
-        register(PlacementType.HERB_PATCH, "Herb Patch", (id, player, sequence) ->
-                WorldObjectFactory.createHerbPatch(id, player.getPreciseX() + 24, player.getPreciseY() + 8, "herb_dawnblossom", 1));
+                WorldObjectFactory.createDoor(id, player.getPreciseX() + 16, player.getPreciseY(), sequence % 2 == 0));
 
         register(PlacementType.WAYPOINT, "Waypoint", (id, player, sequence) ->
                 WorldObjectFactory.createWaypoint(id, id, "Waypoint " + sequence, player.getPreciseX() + 48, player.getPreciseY(), 10, 10));
