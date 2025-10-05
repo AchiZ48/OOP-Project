@@ -20,7 +20,6 @@ public class InputManager {
         panel.setFocusTraversalKeysEnabled(false);
         setupBindings();
 
-        // เพิ่ม KeyEventDispatcher เพื่อจับ SHIFT/CTRL/ALT
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
             int code = e.getKeyCode();
 
@@ -34,8 +33,7 @@ public class InputManager {
                 }
             }
 
-            // ถ้าอยากจับ CTRL / ALT ด้วยก็เพิ่มแบบเดียวกัน
-            return false; // ส่งต่อ event ไป component อื่นด้วย
+            return false;
         });
     }
 
@@ -88,7 +86,6 @@ public class InputManager {
         am.put("pressed_" + name, new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
                 keysPressed.add(name);
-                // run oneShot ถ้ามี bind ไว้
                 Runnable r = oneShot.remove(name);
                 if (r != null) r.run();
             }
@@ -107,7 +104,6 @@ public class InputManager {
     }
 
     public void update() {
-        // Clear consumed keys ที่ไม่ถูกกดแล้ว
         keysConsumed.retainAll(keysPressed);
     }
 
