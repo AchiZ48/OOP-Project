@@ -29,10 +29,8 @@ public class GamePanel extends JPanel {
     final List<WorldMessage> worldMessages = new ArrayList<>();
     private static final double WORLD_MESSAGE_DURATION = 3.5;
     private Interactable highlightedInteractable;
-    private final Inventory inventory = new Inventory();
     private final QuestManager questManager = new QuestManager();
     private final FastTravelNetwork fastTravelNetwork = new FastTravelNetwork();
-    private final List<EquipmentItem> equipmentInventory = new ArrayList<>();
     private final DialogManager dialogManager = new DialogManager();
     private final List<NPC> npcs = new ArrayList<>();
     private final List<FastTravelPoint> fastTravelOptions = new ArrayList<>();
@@ -44,13 +42,16 @@ public class GamePanel extends JPanel {
     private final AmbushManager ambushManager = new AmbushManager();
     private final SoundManager soundManager = new SoundManager();
     private String currentAmbientTrack = "ambient_overworld";
+    private static final int BOSS_KEYS_REQUIRED = 3;
+    private final StatsMenuController statsMenu = new StatsMenuController(this);
+    private final HudRenderer hudRenderer = new HudRenderer(this, statsMenu);
     private int lastAmbientZoneId = -1;
     private int gold = 0;
+    private int essence = 0;
+    private int bossKeys = 0;
     int activeIndex = 0;
     boolean debugMode = false;
     boolean showPauseOverlay = false;
-    boolean statsMenuOpen = false;
-    int statsMenuSelection = 0;
     enum State { TITLE, SAVE_MENU, WORLD, BATTLE }
     State state = State.TITLE;
 
@@ -101,8 +102,7 @@ public class GamePanel extends JPanel {
     void createDefaultParty() {
         party = new ArrayList<>();
         gold = 0;
-        inventory.clear();
-        equipmentInventory.clear();
+        essence = 0;
         fastTravelNetwork.clear();
         worldMessages.clear();
         highlightedInteractable = null;
@@ -110,8 +110,7 @@ public class GamePanel extends JPanel {
         fastTravelOptions.clear();
         fastTravelMenuOpen = false;
         fastTravelOrigin = null;
-        statsMenuOpen = false;
-        statsMenuSelection = 0;
+        statsMenu.reset();
         party.add(Player.createSample("Bluu", 64, 64));
         party.add(Player.createSample("Souri", 96, 64));
         party.add(Player.createSample("Bob", 128, 64));
@@ -122,7 +121,6 @@ public class GamePanel extends JPanel {
         if (camera != null) {
             camera.followEntity(party.get(activeIndex));
         }
-        refreshStatsMenuSelection();
         lastAmbientZoneId = -1;
         if (!party.isEmpty()) {
             updateAmbientTrack(party.get(activeIndex));
@@ -140,9 +138,10 @@ public class GamePanel extends JPanel {
         fastTravelMenuOpen = false;
         fastTravelOrigin = null;
 
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest", 192, 160, 30, "bluu_sigil"));
-        worldObjectManager.add(WorldObjectFactory.createDoor("starter_door", 240, 160, false, null));
-        worldObjectManager.add(WorldObjectFactory.createHerbPatch("starter_herb", 180, 200, "herb_dawnblossom", 2));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_west", 168, 176, 40, 1, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 212, 152, 55, 2, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 256, 200, 65, 3, true));
+        worldObjectManager.add(WorldObjectFactory.createDoor("starter_door", 240, 160, false));
 
         FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 320, 160, 0, 4);
         village.setUnlocked(true);
@@ -199,10 +198,10 @@ public class GamePanel extends JPanel {
         boolean dialogActive = dialogManager.isActive();
 
         if (input.consumeIfPressed("C")) {
-            if (statsMenuOpen) {
-                closeStatsMenu();
+            if (statsMenu.isOpen()) {
+                statsMenu.close();
             } else if (!fastTravelMenuOpen && !dialogActive && state == State.WORLD) {
-                openStatsMenu();
+                statsMenu.open();
             }
         }
 
@@ -210,8 +209,8 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        if (statsMenuOpen) {
-            updateStatsMenu();
+        if (statsMenu.isOpen()) {
+            statsMenu.update();
             return;
         }
 
@@ -414,8 +413,7 @@ public class GamePanel extends JPanel {
         Player leader = party.get(activeIndex);
         boolean dialogActive = dialogManager.isActive();
 
-        if (statsMenuOpen) {
-            updateStatsMenu();
+        if (statsMenu.isOpen()) {
             updateWorldMessages(dt);
             return;
         }
@@ -622,74 +620,6 @@ public class GamePanel extends JPanel {
         fastTravelSelectionIndex = 0;
     }
 
-    private void openStatsMenu() {
-        if (party == null || party.isEmpty()) {
-            return;
-        }
-        refreshStatsMenuSelection();
-        statsMenuSelection = Math.max(0, Math.min(activeIndex, party.size() - 1));
-        if (!statsMenuOpen) {
-            statsMenuOpen = true;
-            playSfx("menu_open");
-        }
-    }
-
-    private void closeStatsMenu() {
-        closeStatsMenu(false);
-    }
-
-    private void closeStatsMenu(boolean silent) {
-        if (!statsMenuOpen) {
-            return;
-        }
-        statsMenuOpen = false;
-        if (!silent) {
-            playSfx("menu_cancel");
-        }
-    }
-
-    private void refreshStatsMenuSelection() {
-        if (party == null || party.isEmpty()) {
-            statsMenuSelection = 0;
-        } else {
-            statsMenuSelection = Math.max(0, Math.min(statsMenuSelection, party.size() - 1));
-        }
-    }
-
-    private void updateStatsMenu() {
-        if (!statsMenuOpen) {
-            return;
-        }
-        if (party == null || party.isEmpty()) {
-            closeStatsMenu(true);
-            return;
-        }
-        refreshStatsMenuSelection();
-        int partySize = party.size();
-        int previousSelection = statsMenuSelection;
-
-        if (input.consumeIfPressed("UP")) {
-            statsMenuSelection = (statsMenuSelection - 1 + partySize) % partySize;
-        }
-        if (input.consumeIfPressed("DOWN")) {
-            statsMenuSelection = (statsMenuSelection + 1) % partySize;
-        }
-        if (input.consumeIfPressed("LEFT")) {
-            statsMenuSelection = (statsMenuSelection - 1 + partySize) % partySize;
-        }
-        if (input.consumeIfPressed("RIGHT")) {
-            statsMenuSelection = (statsMenuSelection + 1) % partySize;
-        }
-
-        if (statsMenuSelection != previousSelection) {
-            playSfx("menu_move");
-        }
-
-        if (input.consumeIfPressed("ESC") || input.consumeIfPressed("C")) {
-            closeStatsMenu();
-        }
-    }
-
     private void teleportPartyTo(FastTravelPoint destination) {
         if (destination == null || party == null || party.isEmpty() || map == null) {
             return;
@@ -811,14 +741,26 @@ public class GamePanel extends JPanel {
         }
     }
     void enterBattle() {
-        enterBattle(false);
+        if (!hasRequiredBossKeys()) {
+            queueWorldMessage("The boss gate remains sealed. Keys " + bossKeys + "/" + BOSS_KEYS_REQUIRED + ".");
+            playSfx("door_locked");
+            return;
+        }
+        spendBossKeys();
+        queueWorldMessage("Boss gate unlocked!");
+        queueWorldMessage("Remaining keys: " + bossKeys + "/" + BOSS_KEYS_REQUIRED + ".");
+        startBattle(false);
     }
 
     void enterBattle(boolean ambush) {
+        startBattle(ambush);
+    }
+
+    private void startBattle(boolean ambush) {
         if (party != null && !party.isEmpty() && demoEnemy != null) {
             showPauseOverlay = false;
             closeFastTravelMenu();
-            closeStatsMenu(true);
+            statsMenu.close(true);
             dialogManager.clear();
             battleScreen.startBattle(new ArrayList<>(party), demoEnemy, ambush);
             playBattleTrack(ambush ? "battle_ambush" : "battle_default");
@@ -826,11 +768,10 @@ public class GamePanel extends JPanel {
             System.out.println(ambush ? "Ambush battle started!" : "Battle started!");
         }
     }
-
     void returnToWorld() {
         showPauseOverlay = false;
         closeFastTravelMenu();
-        closeStatsMenu(true);
+        statsMenu.close(true);
         ambushManager.reset();
         state = State.WORLD;
         soundManager.stopChannel(SoundManager.Channel.BATTLE);
@@ -867,8 +808,7 @@ public class GamePanel extends JPanel {
             if (!party.isEmpty()) {
                 camera.followEntity(party.get(activeIndex));
             }
-            statsMenuOpen = false;
-            refreshStatsMenuSelection();
+            statsMenu.reset();
             lastAmbientZoneId = -1;
             updateAmbientTrack(party.isEmpty() ? null : party.get(activeIndex));
             state = State.WORLD;
@@ -903,8 +843,8 @@ public class GamePanel extends JPanel {
         }
         if (!worldMessages.isEmpty()) {
             WorldMessage last = worldMessages.get(worldMessages.size() - 1);
-            if (last.text.equals(trimmed)) {
-                last.elapsed = 0;
+            if (last.text().equals(trimmed)) {
+                last.restart();
                 return;
             }
         }
@@ -943,6 +883,92 @@ public class GamePanel extends JPanel {
         return gold;
     }
 
+    void addEssence(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        essence += amount;
+    }
+
+    boolean spendEssence(int amount) {
+        if (amount <= 0) {
+            return true;
+        }
+        if (essence < amount) {
+            return false;
+        }
+        essence -= amount;
+        return true;
+    }
+
+    double getCooldown() { return ambushManager.getCooldown(); }
+
+    int getEssence() {
+        return essence;
+    }
+
+    boolean addBossKey() {
+        if (bossKeys >= BOSS_KEYS_REQUIRED) {
+            return false;
+        }
+        bossKeys++;
+        return true;
+    }
+
+    void spendBossKeys() {
+        bossKeys = Math.max(0, bossKeys - BOSS_KEYS_REQUIRED);
+    }
+
+    boolean hasRequiredBossKeys() {
+        return bossKeys >= BOSS_KEYS_REQUIRED;
+    }
+
+    int getBossKeys() {
+        return bossKeys;
+    }
+
+    int getBossKeysRequired() {
+        return BOSS_KEYS_REQUIRED;
+    }
+
+    double getAveragePartyLevel() {
+        if (party == null || party.isEmpty()) {
+            return 1.0;
+        }
+        double total = 0.0;
+        int count = 0;
+        for (Player player : party) {
+            if (player == null) {
+                continue;
+            }
+            Stats stats = player.getStats();
+            if (stats == null) {
+                continue;
+            }
+            total += Math.max(1, stats.getLevel());
+            count++;
+        }
+        return count == 0 ? 1.0 : total / count;
+    }
+
+    int scaleChestGold(int baseGold) {
+        if (baseGold <= 0) {
+            return 0;
+        }
+        double averageLevel = getAveragePartyLevel();
+        double multiplier = 1.0 + averageLevel * 0.2;
+        return (int) Math.round(baseGold * multiplier);
+    }
+
+    int scaleChestEssence(int baseEssence) {
+        if (baseEssence <= 0) {
+            return 0;
+        }
+        double averageLevel = getAveragePartyLevel();
+        int bonus = (int) Math.floor(Math.max(0.0, averageLevel) / 2.0);
+        return baseEssence + bonus;
+    }
+
     QuestManager getQuestManager() {
         return questManager;
     }
@@ -968,7 +994,7 @@ public class GamePanel extends JPanel {
         if (point == null) {
             return;
         }
-        closeStatsMenu(true);
+        statsMenu.close(true);
         registerFastTravelPoint(point);
         if (!fastTravelNetwork.isUnlocked(point.getPointId())) {
             fastTravelNetwork.unlock(point.getPointId());
@@ -989,27 +1015,6 @@ public class GamePanel extends JPanel {
         fastTravelSelectionIndex = 0;
         playSfx("menu_open");
     }
-
-    void grantEquipmentToActive(EquipmentItem item) {
-        if (item == null) {
-            return;
-        }
-        equipmentInventory.add(item);
-        queueWorldMessage("Stored " + item.getDisplayName());
-    }
-
-    void addInventoryItem(String itemId, int amount) {
-        inventory.addItem(itemId, amount);
-    }
-
-    boolean hasInventoryItem(String itemId, int amount) {
-        return inventory.hasItem(itemId, amount);
-    }
-
-    boolean consumeInventoryItem(String itemId, int amount) {
-        return inventory.consumeItem(itemId, amount);
-    }
-
     void healPartyPercentage(double fraction) {
         if (party == null || party.isEmpty()) {
             return;
@@ -1064,7 +1069,6 @@ public class GamePanel extends JPanel {
         Graphics2D gUI = HUDBackBuffer.createGraphics();
 
 
-        // --- เคลียร์ HUDBackBuffer ทุกครั้งก่อนวาดใหม่ ---
         gUI.setComposite(AlphaComposite.Clear);
         gUI.fillRect(0, 0, HUDBackBuffer.getWidth(), HUDBackBuffer.getHeight());
         gUI.setComposite(AlphaComposite.SrcOver);
@@ -1231,203 +1235,16 @@ public class GamePanel extends JPanel {
         }
 
     }
-    // สมมติ Player มี: name, level, hp, maxHp, mp, maxMp, BufferedImage portrait
 
     void   drawHUD(Graphics2D g) {
-        if (party == null || party.isEmpty()) {
-            return;
-        }
-
-        int panelW = 140;
-        int panelH = 42;
-        int gap = 6;
-        int x = 12;
-        int y = vh - (panelH + gap) * Math.min(3, party.size()) - 24;
-        for (int i = 0; i < Math.min(3, party.size()); i++) {
-            Player p = party.get(i);
-            int yy = y + i * (panelH + gap);
-            drawStatPanel(g, x, yy, panelW, panelH, p, i == activeIndex);
-        }
-
-        g.setColor(new Color(180, 220, 255));
-        g.setFont(FontCustom.PressStart2P.deriveFont(7f));
-        g.drawString(String.format("Zoom: %.2fx", camera.getZoom()), 16, 18);
-
-        boolean dialogActive = dialogManager.isActive();
-
-        if (state == State.WORLD) {
-            drawWorldMessages(g);
-        }
-
-        if (statsMenuOpen) {
-            drawStatsMenu(g);
-        }
-
-        if (state == State.WORLD && !showPauseOverlay && !dialogActive && !fastTravelMenuOpen && !statsMenuOpen) {
-            drawPlacementHud(g);
-            drawInteractionPrompt(g);
-        }
-
+        hudRenderer.draw(g, highlightedInteractable, dialogManager.isActive(), fastTravelMenuOpen);
         if (fastTravelMenuOpen) {
             drawFastTravelMenu(g);
         }
-
-        if (dialogActive) {
+        if (dialogManager.isActive()) {
             drawDialog(g);
         }
     }
-
-    private void drawStatsMenu(Graphics2D g) {
-        if (!statsMenuOpen || party == null || party.isEmpty()) {
-            return;
-        }
-        refreshStatsMenuSelection();
-        int clampedIndex = Math.max(0, Math.min(statsMenuSelection, party.size() - 1));
-        Player selected = party.get(clampedIndex);
-        if (selected == null) {
-            return;
-        }
-        Stats stats = selected.getStats();
-        if (stats == null) {
-            return;
-        }
-
-        int width = Math.min(vw - 80, 440);
-        int height = Math.min(vh - 80, 300);
-        int x = (vw - width) / 2;
-        int y = (vh - height) / 2;
-
-        g.setColor(new Color(0, 0, 0, 220));
-        g.fillRoundRect(x, y, width, height, 18, 18);
-        g.setColor(new Color(120, 180, 255));
-        g.drawRoundRect(x, y, width, height, 18, 18);
-
-        Font headerFont = FontCustom.PressStart2P.deriveFont(8f);
-        g.setFont(headerFont);
-        FontMetrics headerMetrics = g.getFontMetrics();
-        int textX = x + 20;
-        int headerBaseline = y + headerMetrics.getAscent() + 14;
-        g.setColor(Color.WHITE);
-        g.drawString("Party Status", textX, headerBaseline);
-
-        Font itemFont = FontCustom.PressStart2P.deriveFont(7f);
-        g.setFont(itemFont);
-        FontMetrics itemMetrics = g.getFontMetrics();
-        int listTop = headerBaseline + 10;
-        int listWidth = 140;
-        int rowHeight = itemMetrics.getHeight() + 6;
-
-        for (int i = 0; i < party.size(); i++) {
-            int rowY = listTop + i * rowHeight;
-            boolean selectedRow = i == clampedIndex;
-            int baseline = rowY + itemMetrics.getAscent();
-            if (selectedRow) {
-                g.setColor(new Color(60, 110, 200, 170));
-                g.fillRoundRect(textX - 8, rowY - 4, listWidth + 16, itemMetrics.getHeight() + 8, 10, 10);
-            }
-            g.setColor(selectedRow ? Color.WHITE : new Color(210, 210, 210));
-            g.drawString(party.get(i).name, textX, baseline);
-        }
-
-        int panelX = textX + listWidth + 28;
-        int panelWidth = width - (panelX - x) - 20;
-        int panelY = listTop - 6;
-        int panelHeight = height - (panelY - y) - 30;
-        g.setColor(new Color(0, 0, 0, 130));
-        g.fillRoundRect(panelX - 12, panelY - 10, Math.max(160, panelWidth), panelHeight, 14, 14);
-
-        g.setColor(Color.WHITE);
-        int infoBaseline = panelY + itemMetrics.getAscent();
-        g.drawString(String.format("Name: %s", selected.name), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight();
-        g.drawString(String.format("Level %02d", stats.getLevel()), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight();
-        int expToNext = 50 + stats.getLevel() * 50;
-        g.drawString(String.format("EXP %d / %d", stats.getExp(), expToNext), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight() + 6;
-
-        g.drawString(String.format("HP %d / %d", stats.getCurrentHp(), stats.getMaxHp()), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight();
-        g.drawString(String.format("BP %d / %d", stats.getCurrentBattlePoints(), stats.getMaxBattlePoints()), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight() + 6;
-
-        g.drawString(String.format("STR %d (base %d)", stats.getTotalValue(Stats.StatType.STRENGTH), stats.getBaseValue(Stats.StatType.STRENGTH)), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight();
-        g.drawString(String.format("ARC %d (base %d)", stats.getTotalValue(Stats.StatType.ARCANE), stats.getBaseValue(Stats.StatType.ARCANE)), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight();
-        g.drawString(String.format("DEF %d (base %d)", stats.getTotalValue(Stats.StatType.DEFENSE), stats.getBaseValue(Stats.StatType.DEFENSE)), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight();
-        g.drawString(String.format("SPD %d (base %d)", stats.getTotalValue(Stats.StatType.SPEED), stats.getBaseValue(Stats.StatType.SPEED)), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight();
-        g.drawString(String.format("LCK %d (base %d)", stats.getTotalValue(Stats.StatType.LUCK), stats.getBaseValue(Stats.StatType.LUCK)), panelX, infoBaseline);
-        infoBaseline += itemMetrics.getHeight();
-        g.drawString(String.format("AWR %d (base %d)", stats.getTotalValue(Stats.StatType.AWARENESS), stats.getBaseValue(Stats.StatType.AWARENESS)), panelX, infoBaseline);
-
-        g.setColor(new Color(180, 180, 180));
-        g.drawString("C/ESC: Close   Up/Down: Switch", x + 20, y + height - 18);
-    }
-
-    private void drawInteractionPrompt(Graphics2D g) {
-        if (highlightedInteractable == null) {
-            return;
-        }
-        String prompt = highlightedInteractable.getInteractionPrompt();
-        if (prompt == null || prompt.isEmpty()) {
-            return;
-        }
-        String text = "E: " + prompt;
-        Font font = FontCustom.PressStart2P.deriveFont(8f);
-        g.setFont(font);
-        FontMetrics fm = g.getFontMetrics();
-        int paddingX = 12;
-        int paddingY = 6;
-        int width = fm.stringWidth(text) + paddingX * 2;
-        int height = fm.getHeight() + paddingY * 2;
-        int x = (vw - width) / 2;
-        int y = vh - height - 20;
-        g.setColor(new Color(0, 0, 0, 180));
-        g.fillRoundRect(x, y, width, height, 8, 8);
-        g.setColor(Color.WHITE);
-        g.drawString(text, x + paddingX, y + height - paddingY - fm.getDescent());
-    }
-
-    private void drawPlacementHud(Graphics2D g) {
-        if (worldObjectManager == null) {
-            return;
-        }
-        PlacementManager placement = worldObjectManager.getPlacementManager();
-        if (placement == null) {
-            return;
-        }
-        String header = "Placement";
-        String name = placement.getCurrentLabel();
-        String placeInstruction = "Space: Place";
-        String cycleInstruction = "Q/R: Cycle   E: Use";
-        Font font = FontCustom.PressStart2P.deriveFont(7f);
-        g.setFont(font);
-        FontMetrics fm = g.getFontMetrics();
-        int width = Math.max(Math.max(fm.stringWidth(header), fm.stringWidth(name)),
-                Math.max(fm.stringWidth(placeInstruction), fm.stringWidth(cycleInstruction))) + 14;
-        int lineHeight = fm.getHeight();
-        int height = lineHeight * 4 + 16;
-        int x = vw - width - 16;
-        int y = vh - height - 16;
-        g.setColor(new Color(0, 0, 0, 170));
-        g.fillRoundRect(x, y, width, height, 10, 10);
-        int textX = x + 8;
-        int textY = y + fm.getAscent() + 8;
-        g.setColor(new Color(180, 220, 255));
-        g.drawString(header, textX, textY);
-        textY += lineHeight;
-        g.setColor(Color.WHITE);
-        g.drawString(name, textX, textY);
-        textY += lineHeight;
-        g.setColor(new Color(210, 210, 210));
-        g.drawString(placeInstruction, textX, textY);
-        textY += lineHeight;
-        g.drawString(cycleInstruction, textX, textY);
-    }
-
     private void drawFastTravelMenu(Graphics2D g) {
         int optionCount = fastTravelOptions.size();
         int visibleCount = Math.min(6, Math.max(1, optionCount));
@@ -1652,111 +1469,6 @@ public class GamePanel extends JPanel {
         return sprite;
     }
 
-    private void drawWorldMessages(Graphics2D g) {
-        if (worldMessages.isEmpty()) {
-            return;
-        }
-        Font font = FontCustom.PressStart2P.deriveFont(7f);
-        g.setFont(font);
-        FontMetrics fm = g.getFontMetrics();
-        int lineHeight = fm.getHeight() + 6;
-        int startY = 32;
-        for (int i = 0; i < worldMessages.size(); i++) {
-            WorldMessage message = worldMessages.get(i);
-            float alpha = message.alpha();
-            String text = message.text;
-            int textWidth = fm.stringWidth(text);
-            int boxWidth = textWidth + 16;
-            int x = (vw - boxWidth) / 2;
-            int y = startY + i * lineHeight + fm.getAscent();
-            int boxY = y - fm.getAscent() - 6;
-            g.setColor(new Color(0, 0, 0, (int) (160 * alpha)));
-            g.fillRoundRect(x, boxY, boxWidth, fm.getHeight() + 12, 10, 10);
-            g.setColor(new Color(255, 255, 255, (int) (230 * alpha)));
-            g.drawString(text, x + 8, y);
-        }
-    }
-    private void drawStatPanel(Graphics2D g, int x, int y, int w, int h, Player player, boolean active) {
-        if (player == null) {
-            return;
-        }
-        g.setColor(new Color(0, 0, 0, 160));
-        g.fillRoundRect(x, y, w, h, 8, 8);
-        if (active) {
-            Stroke oldStroke = g.getStroke();
-            g.setStroke(new BasicStroke(1.6f));
-            g.setColor(new Color(90, 180, 255, 180));
-            g.drawRoundRect(x, y, w, h, 8, 8);
-            g.setStroke(oldStroke);
-        }
-
-        Stats stats = player.getStats();
-        if (stats == null) {
-            return;
-        }
-        Font font = FontCustom.PressStart2P.deriveFont(7f);
-        g.setFont(font);
-        FontMetrics fm = g.getFontMetrics();
-
-        int textX = x + 10;
-        int textY = y + fm.getAscent() + 6;
-        g.setColor(Color.WHITE);
-        String header = String.format("%s Lv%02d", player.name, stats.getLevel());
-        g.drawString(header, textX, textY);
-        textY += fm.getHeight();
-
-        int barWidth = w - 20;
-        int hp = stats.getCurrentHp();
-        int maxHp = stats.getMaxHp();
-        String hpLabel = String.format("%d/%d", hp, maxHp);
-        g.setColor(new Color(210, 210, 210));
-        g.drawString("HP", textX, textY);
-        g.drawString(hpLabel, x + w - 10 - fm.stringWidth(hpLabel), textY);
-        drawBar(g, x + 8, textY + 3, barWidth, 6, hp, maxHp, new Color(255, 130, 118), new Color(215, 54, 44));
-        textY += fm.getHeight() + 4;
-
-        int bp = stats.getCurrentBattlePoints();
-        int maxBp = stats.getMaxBattlePoints();
-        String bpLabel = String.format("%d/%d", bp, maxBp);
-        g.setColor(new Color(200, 200, 200));
-        g.drawString("BP", textX, textY);
-        g.drawString(bpLabel, x + w - 10 - fm.stringWidth(bpLabel), textY);
-        drawBar(g, x + 8, textY + 3, barWidth, 6, bp, maxBp, new Color(90, 160, 255), new Color(40, 100, 210));
-        textY += fm.getHeight() + 4;
-
-        g.setColor(new Color(190, 190, 190));
-        g.drawString(String.format("STR %d  ARC %d", stats.getTotalValue(Stats.StatType.STRENGTH),
-                stats.getTotalValue(Stats.StatType.ARCANE)), textX, textY);
-        textY += fm.getHeight();
-        g.drawString(String.format("SPD %d  LCK %d", stats.getTotalValue(Stats.StatType.SPEED),
-                stats.getTotalValue(Stats.StatType.LUCK)), textX, textY);
-        textY += fm.getHeight();
-        g.drawString(String.format("AWR %d  DEF %d", stats.getTotalValue(Stats.StatType.AWARENESS),
-                stats.getTotalValue(Stats.StatType.DEFENSE)), textX, textY);
-    }
-
-    private void drawBar(Graphics2D g, int x, int y, int w, int h,
-                         int value, int max,
-                         Color cLight, Color cDark) {
-        g.setColor(new Color(24, 24, 28, 200));
-        g.fillRoundRect(x, y, w, h, 4, 4);
-        if (max <= 0) {
-            g.setColor(new Color(80, 80, 90));
-            g.drawRoundRect(x, y, w, h, 4, 4);
-            return;
-        }
-        int clampedValue = Math.max(0, Math.min(value, max));
-        int fillWidth = (int) Math.round((w - 2) * (clampedValue / (double) max));
-        if (fillWidth > 0) {
-            Paint previous = g.getPaint();
-            g.setPaint(new GradientPaint(x, y, cLight, x + w, y, cDark));
-            g.fillRoundRect(x + 1, y + 1, Math.max(1, fillWidth), Math.max(1, h - 2), 4, 4);
-            g.setPaint(previous);
-        }
-        g.setColor(new Color(235, 235, 240, 150));
-        g.drawRoundRect(x, y, w, h, 4, 4);
-    }
-
     private static final class DepthRenderable {
         final double depth;
         final Consumer<Graphics2D> drawCommand;
@@ -1766,34 +1478,15 @@ public class GamePanel extends JPanel {
             this.drawCommand = drawCommand;
         }
     }
-
-    private static final class WorldMessage {
-        final String text;
-        final double duration;
-        double elapsed;
-
-        WorldMessage(String text, double duration) {
-            this.text = text;
-            this.duration = Math.max(0.5, duration);
-            this.elapsed = 0.0;
-        }
-
-        void update(double dt) {
-            elapsed += dt;
-        }
-
-        boolean isExpired() {
-            return elapsed >= duration;
-        }
-
-        float alpha() {
-            if (duration <= 0.0) {
-                return 0f;
-            }
-            double remaining = Math.max(0.0, duration - elapsed);
-            double ratio = Math.min(1.0, Math.max(0.0, remaining / duration));
-            return (float) Math.max(0.25, ratio);
-        }
-    }
 }
+
+
+
+
+
+
+
+
+
+
 
