@@ -28,7 +28,7 @@ class HudRenderer {
         String essenceText = "Essence: " + gamePanel.getEssence();
         String keyText = "Boss Keys: " + gamePanel.getBossKeys() + "/" + gamePanel.getBossKeysRequired();
 
-        Font currencyFont = FontCustom.PressStart2P.deriveFont(8f);
+        Font currencyFont = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
         g.setFont(currencyFont);
         FontMetrics currencyMetrics = g.getFontMetrics();
         int currencyPanelWidth = Math.max(Math.max(currencyMetrics.stringWidth(goldText), currencyMetrics.stringWidth(essenceText)), currencyMetrics.stringWidth(keyText)) + 16;
@@ -52,7 +52,7 @@ class HudRenderer {
         drawCurrencyPanel(g, currencyX, currencyY, currencyPanelWidth, currencyPanelHeight, currencyMetrics, goldText, essenceText, keyText);
 
         g.setColor(new Color(180, 220, 255));
-        g.setFont(FontCustom.PressStart2P.deriveFont(7f));
+        g.setFont(FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16));
         g.drawString(String.format("Zoom: %.2fx", gamePanel.camera.getZoom()), 16, 18);
 
         if (gamePanel.state == GamePanel.State.WORLD) {
@@ -95,7 +95,7 @@ class HudRenderer {
         if (messages.isEmpty()) {
             return;
         }
-        Font font = FontCustom.PressStart2P.deriveFont(7f);
+        Font font = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
         g.setFont(font);
         FontMetrics fm = g.getFontMetrics();
         int lineHeight = fm.getHeight() + 6;
@@ -128,7 +128,7 @@ class HudRenderer {
         String name = placement.getCurrentLabel();
         String placeInstruction = "Space: Place";
         String cycleInstruction = "Q/R: Cycle   E: Use";
-        Font font = FontCustom.PressStart2P.deriveFont(7f);
+        Font font = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 8);
         g.setFont(font);
         FontMetrics fm = g.getFontMetrics();
         int width = Math.max(Math.max(fm.stringWidth(header), fm.stringWidth(name)),
@@ -162,7 +162,7 @@ class HudRenderer {
             return;
         }
         String text = "E: " + prompt;
-        Font font = FontCustom.PressStart2P.deriveFont(8f);
+        Font font = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
         g.setFont(font);
         FontMetrics fm = g.getFontMetrics();
         int paddingX = 12;

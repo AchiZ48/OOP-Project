@@ -46,7 +46,7 @@ public class GamePanel extends JPanel {
     private final StatsMenuController statsMenu = new StatsMenuController(this);
     private final HudRenderer hudRenderer = new HudRenderer(this, statsMenu);
     private int lastAmbientZoneId = -1;
-    private int gold = 0;
+    private int gold = 50;
     private int essence = 0;
     private int bossKeys = 0;
     int activeIndex = 0;
@@ -1148,7 +1148,7 @@ public class GamePanel extends JPanel {
         g.fillRoundRect(x, y, menuWidth, menuHeight, 15, 15);
 
         g.setColor(Color.WHITE);
-        g.setFont(FontCustom.PressStart2P.deriveFont(10f));
+        g.setFont(FontCustom.PressStart2P.deriveFont(Font.PLAIN, 14));
 
         String[] options = { "Resume", "Save", "Main Menu", "Quit" };
         for (int i = 0; i < options.length; i++) {
@@ -1258,7 +1258,7 @@ public class GamePanel extends JPanel {
         g.setColor(new Color(120, 180, 255));
         g.drawRoundRect(x, y, width, height, 16, 16);
 
-        Font font = FontCustom.PressStart2P.deriveFont(7f);
+        Font font = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
         g.setFont(font);
         FontMetrics fm = g.getFontMetrics();
         int textX = x + 18;
@@ -1337,7 +1337,7 @@ public class GamePanel extends JPanel {
         g.setColor(new Color(120, 180, 255));
         g.drawRoundRect(x, y, boxWidth, boxHeight, 18, 18);
 
-        Font textFont = FontCustom.PressStart2P.deriveFont(7f);
+        Font textFont = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
         g.setFont(textFont);
         FontMetrics fm = g.getFontMetrics();
 
