@@ -6,19 +6,9 @@ final class WorldObjectFactory {
     private WorldObjectFactory() {
     }
 
-    static ChestObject createChest(String id, double x, double y, int gold, String equipmentId) {
-        return createChest(id, x, y, gold, equipmentId, null, 0);
-    }
-
-    static ChestObject createChest(String id,
-                                   double x,
-                                   double y,
-                                   int gold,
-                                   String equipmentId,
-                                   String inventoryItemId,
-                                   int inventoryAmount) {
+    static ChestObject createChest(String id, double x, double y, int baseGold, int baseEssence, boolean grantsBossKey) {
         Sprite sprite = createRectSprite(32, 32, new Color(172, 116, 48));
-        return new ChestObject(id, x, y, 32, 32, sprite, gold, equipmentId, inventoryItemId, inventoryAmount);
+        return new ChestObject(id, x, y, 32, 32, sprite, baseGold, baseEssence, grantsBossKey);
     }
 
     static FastTravelPoint createWaypoint(String id,
@@ -32,14 +22,9 @@ final class WorldObjectFactory {
         return new FastTravelPoint(id, pointId, displayName, x, y, 28, 40, sprite, unlockCost, travelCost);
     }
 
-    static DoorObject createDoor(String id, double x, double y, boolean locked, String requiredItemId) {
+    static DoorObject createDoor(String id, double x, double y, boolean locked) {
         Sprite sprite = createRectSprite(32, 48, locked ? new Color(110, 80, 40) : new Color(156, 118, 72));
-        return new DoorObject(id, x, y, 32, 48, sprite, locked, requiredItemId);
-    }
-
-    static HerbPatchObject createHerbPatch(String id, double x, double y, String itemId, int amount) {
-        Sprite sprite = createRectSprite(24, 24, new Color(34, 139, 34));
-        return new HerbPatchObject(id, x, y, 24, 24, sprite, itemId, amount);
+        return new DoorObject(id, x, y, 32, 48, sprite, locked);
     }
 
     private static Sprite createRectSprite(int width, int height, Color color) {
@@ -53,3 +38,4 @@ final class WorldObjectFactory {
         return Sprite.forStaticImage(image);
     }
 }
+
