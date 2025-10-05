@@ -3,8 +3,9 @@
  <image source="summer.png" width="512" height="512"/>
  <wangsets>
   <wangset name="dirt" type="corner" tile="-1">
-   <wangcolor name="" color="#ff0000" tile="-1" probability="1"/>
-   <wangcolor name="g" color="#00ff00" tile="-1" probability="1"/>
+   <wangcolor name="dirt" color="#ff0000" tile="52" probability="1"/>
+   <wangcolor name="grass" color="#00ff00" tile="16" probability="1"/>
+   <wangcolor name="water" color="#0000ff" tile="220" probability="1"/>
    <wangtile tileid="1" wangid="0,2,0,1,0,2,0,2"/>
    <wangtile tileid="2" wangid="0,2,0,1,0,1,0,2"/>
    <wangtile tileid="3" wangid="0,2,0,2,0,1,0,2"/>
@@ -34,6 +35,12 @@
    <wangtile tileid="82" wangid="0,0,0,0,0,2,0,2"/>
    <wangtile tileid="83" wangid="0,2,0,1,0,1,0,2"/>
    <wangtile tileid="84" wangid="0,1,0,2,0,2,0,1"/>
+   <wangtile tileid="181" wangid="0,0,0,3,0,3,0,0"/>
+   <wangtile tileid="219" wangid="0,3,0,3,0,3,0,3"/>
+   <wangtile tileid="220" wangid="0,3,0,0,0,3,0,3"/>
+   <wangtile tileid="221" wangid="0,3,0,3,0,0,0,3"/>
+   <wangtile tileid="236" wangid="0,0,0,3,0,3,0,3"/>
+   <wangtile tileid="237" wangid="0,3,0,3,0,3,0,0"/>
   </wangset>
  </wangsets>
 </tileset>
