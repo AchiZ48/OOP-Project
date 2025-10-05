@@ -41,6 +41,20 @@ class InteractionContext {
         return gamePanel != null ? gamePanel.getGold() : 0;
     }
 
+    void addEssence(int amount) {
+        if (gamePanel != null) {
+            gamePanel.addEssence(amount);
+        }
+    }
+
+    boolean spendEssence(int amount) {
+        return gamePanel != null && gamePanel.spendEssence(amount);
+    }
+
+    int getEssence() {
+        return gamePanel != null ? gamePanel.getEssence() : 0;
+    }
+
     QuestManager getQuestManager() {
         return gamePanel != null ? gamePanel.getQuestManager() : null;
     }
@@ -57,21 +71,9 @@ class InteractionContext {
         }
     }
 
-    void grantItemToLeader(EquipmentItem item) {
-        if (gamePanel != null) {
-            gamePanel.grantEquipmentToActive(item);
-        }
-    }
-
     void openFastTravel(FastTravelPoint point) {
         if (gamePanel != null) {
             gamePanel.openFastTravel(point);
-        }
-    }
-
-    void addInventoryItem(String itemId, int amount) {
-        if (gamePanel != null) {
-            gamePanel.addInventoryItem(itemId, amount);
         }
     }
 
@@ -80,8 +82,6 @@ class InteractionContext {
             gamePanel.playSfx(sfxId);
         }
     }
-
-    boolean consumeInventoryItem(String itemId, int amount) {
-        return gamePanel != null && gamePanel.consumeInventoryItem(itemId, amount);
-    }
 }
+
+
