@@ -111,9 +111,9 @@ public class GamePanel extends JPanel {
         fastTravelMenuOpen = false;
         fastTravelOrigin = null;
         statsMenu.reset();
-        party.add(Player.createSample("Bluu", 64, 64));
-        party.add(Player.createSample("Souri", 96, 64));
-        party.add(Player.createSample("Bob", 128, 64));
+        party.add(Player.createSample("Bluu", 3600, 3600));
+        party.add(Player.createSample("Souri", 3600, 3600));
+        party.add(Player.createSample("Bob", 3600, 3600));
         activeIndex = 0;
         if (worldObjectManager != null) {
             spawnInitialObjects();
@@ -138,12 +138,12 @@ public class GamePanel extends JPanel {
         fastTravelMenuOpen = false;
         fastTravelOrigin = null;
 
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_west", 168, 176, 40, 1, true));
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 212, 152, 55, 2, true));
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 256, 200, 65, 3, true));
-        worldObjectManager.add(WorldObjectFactory.createDoor("starter_door", 240, 160, false));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_west", 3610, 3600, 40, 1, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 3620, 3600, 55, 2, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 3630, 3600, 65, 3, true));
+        worldObjectManager.add(WorldObjectFactory.createDoor("starter_door", 3640, 3600, false));
 
-        FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 320, 160, 0, 4);
+        FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 3700, 3600, 0, 4);
         village.setUnlocked(true);
         worldObjectManager.add(village);
 
