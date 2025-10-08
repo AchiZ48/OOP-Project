@@ -27,6 +27,9 @@ class HudRenderer {
         String goldText = "Gold: " + gamePanel.getGold();
         String essenceText = "Essence: " + gamePanel.getEssence();
         String keyText = "Boss Keys: " + gamePanel.getBossKeys() + "/" + gamePanel.getBossKeysRequired();
+        Player leader = party.get(gamePanel.activeIndex);
+
+
 
         Font currencyFont = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
         g.setFont(currencyFont);
@@ -37,7 +40,7 @@ class HudRenderer {
         int currencyX = 12;
         int currencyBottomMargin = 12;
         int currencyY = gamePanel.vh - currencyPanelHeight - currencyBottomMargin;
-
+        g.drawString(Integer.toString(gamePanel.map.getZone((int)(leader.x / 32), (int)(leader.y / 32))), 100, 50);
         int x = 12;
         int y = currencyY - (panelH + gap) * visibleParty - 16;
         if (y < 20) {
