@@ -261,13 +261,6 @@ public class BattleScreen {
         g.setColor(new Color(6, 6, 30));
         g.fillRect(0, 0, gp.vw, gp.vh);
         backgroundSprite.draw(g,0,0,640,360);
-        Image image;
-        try {
-            image = ImageIO.read(new File("resources/sprites/Alice.png"));
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
-        g.drawImage(image,0, 0 , null);
 
         // Battle title
         g.setColor(Color.WHITE);
