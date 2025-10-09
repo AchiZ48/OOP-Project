@@ -24,7 +24,7 @@ public class GamePanel extends JPanel {
     TileMap map;
     Camera camera;
     List<Player> party;
-    Enemy demoEnemy;
+    List<Enemy> enemies;
     WorldObjectManager worldObjectManager;
     final List<WorldMessage> worldMessages = new ArrayList<>();
     private static final double WORLD_MESSAGE_DURATION = 3.5;
@@ -85,7 +85,7 @@ public class GamePanel extends JPanel {
 
         camera = new Camera(vw, vh, map);
         createDefaultParty();
-        demoEnemy = Enemy.createSample("Slime", 400, 200);
+        createDefaultEnemies();
 
         titleScreen = new TitleScreen(this);
         saveMenu = new SaveMenuScreen(this);
@@ -98,7 +98,10 @@ public class GamePanel extends JPanel {
             if (isDisplayable()) requestFocusInWindow();
         });
     }
-
+    void createDefaultEnemies(){
+        enemies = new ArrayList<>();
+        enemies.add(Enemy.createSample("slime", 3800, 3800));
+    }
     void createDefaultParty() {
         party = new ArrayList<>();
         gold = 0;
@@ -114,6 +117,7 @@ public class GamePanel extends JPanel {
         party.add(Player.createSample("Bluu", 3600, 3600));
         party.add(Player.createSample("Souri", 3600, 3600));
         party.add(Player.createSample("Bob", 3600, 3600));
+
         activeIndex = 0;
         if (worldObjectManager != null) {
             spawnInitialObjects();
@@ -171,7 +175,7 @@ public class GamePanel extends JPanel {
 
     private Sprite loadNpcSprite(String fileName, int frameW, int frameH, int fps) {
         try {
-            return SpriteLoader.loadSheet("resources/sprites/" + fileName, frameW, frameH, fps);
+            return SpriteLoader.loadSheet("resources/sprites/" + fileName, frameW, frameH);
         } catch (IOException e) {
             BufferedImage image = new BufferedImage(frameW, frameH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g = image.createGraphics();
@@ -439,9 +443,6 @@ public class GamePanel extends JPanel {
             updateDialog(dt);
         }
 
-        if (demoEnemy != null) {
-            demoEnemy.update(dt);
-        }
 
         if (activeIndex < party.size()) {
             camera.update(dt, leader);
@@ -757,12 +758,14 @@ public class GamePanel extends JPanel {
     }
 
     private void startBattle(boolean ambush) {
-        if (party != null && !party.isEmpty() && demoEnemy != null) {
+        createDefaultEnemies();
+        if (party != null && !party.isEmpty() && enemies != null) {
             showPauseOverlay = false;
             closeFastTravelMenu();
             statsMenu.close(true);
             dialogManager.clear();
-            battleScreen.startBattle(new ArrayList<>(party), demoEnemy, ambush);
+            battleScreen.startBattle(new ArrayList<>(party), new ArrayList<>(enemies), ambush);
+            System.out.println("enter battle naja");
             playBattleTrack(ambush ? "battle_ambush" : "battle_default");
             state = State.BATTLE;
             System.out.println(ambush ? "Ambush battle started!" : "Battle started!");
@@ -1148,7 +1151,7 @@ public class GamePanel extends JPanel {
         g.fillRoundRect(x, y, menuWidth, menuHeight, 15, 15);
 
         g.setColor(Color.WHITE);
-        g.setFont(FontCustom.PressStart2P.deriveFont(Font.PLAIN, 14));
+        g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 14));
 
         String[] options = { "Resume", "Save", "Main Menu", "Quit" };
         for (int i = 0; i < options.length; i++) {
@@ -1211,11 +1214,6 @@ public class GamePanel extends JPanel {
                 }
             }
 
-            if (demoEnemy != null) {
-                Enemy enemy = demoEnemy;
-                renderQueue.add(new DepthRenderable(enemy.getPreciseY() + enemy.h,
-                        graphics -> enemy.draw(graphics, camera)));
-            }
 
             renderQueue.sort(Comparator.comparingDouble(entry -> entry.depth));
 
@@ -1258,7 +1256,7 @@ public class GamePanel extends JPanel {
         g.setColor(new Color(120, 180, 255));
         g.drawRoundRect(x, y, width, height, 16, 16);
 
-        Font font = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
+        Font font = FontCustom.MainFont.deriveFont(Font.PLAIN, 16);
         g.setFont(font);
         FontMetrics fm = g.getFontMetrics();
         int textX = x + 18;
@@ -1337,7 +1335,7 @@ public class GamePanel extends JPanel {
         g.setColor(new Color(120, 180, 255));
         g.drawRoundRect(x, y, boxWidth, boxHeight, 18, 18);
 
-        Font textFont = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
+        Font textFont = FontCustom.MainFont.deriveFont(Font.PLAIN, 16);
         g.setFont(textFont);
         FontMetrics fm = g.getFontMetrics();
 

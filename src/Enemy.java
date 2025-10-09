@@ -1,49 +1,81 @@
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.util.Locale;
 
-class Enemy extends Entity {
+public class Enemy extends Entity {
+    // --- added for dynamic encounters (non-breaking) ---
+    public String id;
+    private final Stats stats;
+
     private static final long serialVersionUID = 1L;
     private static final int DEFAULT_SCALE = 3;
 
-    public Enemy(String name, Sprite spr, double x, double y) {
+
+
+
+    public Enemy(String name, double x, double y) {
         this.name = name;
-        this.sprite = spr;
-        this.w = spr != null ? spr.getFrameWidth() * DEFAULT_SCALE : 0;
-        this.h = spr != null ? spr.getFrameHeight() * DEFAULT_SCALE : 0;
-        this.maxHp = 200;
-        this.hp = maxHp;
-        this.level = 1;
-        this.str = 4;
-        this.def = 1;
+        this.stats = Stats.createDefault();
+    }
+
+    Stats getStats() {
+        return stats;
     }
 
     static Enemy createSample(String name, double x, double y) {
-        BufferedImage bi = new BufferedImage(16 * 4, 16, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = bi.createGraphics();
+        Sprite spr;
+        try {
+            BufferedImage img = ImageIO.read(new File("resources/sprites/" + name.toLowerCase() + ".png"));
+            spr = Sprite.fromSheet(img, 64, 96, img.getWidth()/64, 4, img.getWidth()/64);
+            System.out.println("Loaded sprite for " + name);
+        } catch (Exception e) {
+            BufferedImage bi = new BufferedImage(16, 32, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = bi.createGraphics();
+            g.setColor(Color.GREEN);
+            g.drawRect(0, 0, 15, 31);
+            g.dispose();
 
-        // Create simple slime-like enemy
-        for (int i = 0; i < 4; i++) {
-            int frameX = i * 16;
-
-            // Body (bouncing animation)
-            int bounce = (i < 2) ? 0 : 1;
-            g.setColor(Color.MAGENTA);
-            g.fillOval(frameX + 2, 6 + bounce, 12, 8 - bounce);
-
-            // Eyes
-            g.setColor(Color.BLACK);
-            g.fillOval(frameX + 5, 8 + bounce, 2, 2);
-            g.fillOval(frameX + 9, 8 + bounce, 2, 2);
-
-            // Highlight
-            g.setColor(Color.WHITE);
-            g.fillOval(frameX + 5, 8 + bounce, 1, 1);
-            g.fillOval(frameX + 9, 8 + bounce, 1, 1);
+            spr = Sprite.fromSheet(bi, 16, 16, 4, 1, 4);
         }
-        g.dispose();
 
-        Sprite spr = Sprite.fromSheet(bi, 16, 16, 4, 1, 3);
-        return new Enemy(name, spr, x, y);
+        Enemy enemy = new Enemy(name, x, y);
+        Stats stats = enemy.getStats();
+        switch (name.toLowerCase(Locale.ROOT)) {
+            case "slime":
+                stats.setBaseValue(Stats.StatType.ARCANE, 7);
+                stats.setBaseValue(Stats.StatType.SPEED, 6);
+                break;
+            case "souri":
+                stats.setBaseValue(Stats.StatType.SPEED, 8);
+                stats.setBaseValue(Stats.StatType.LUCK, 6);
+                stats.setBaseValue(Stats.StatType.DEFENSE, 4);
+                break;
+            case "bob":
+                stats.setBaseValue(Stats.StatType.STRENGTH, 7);
+                stats.setBaseValue(Stats.StatType.DEFENSE, 6);
+                stats.setBaseValue(Stats.StatType.MAX_HP, 36);
+                break;
+            default:
+                break;
+        }
+        stats.fullHeal();
+        stats.fullRestoreBattlePoints();
+        enemy.refreshDerivedStats();
+        return enemy;
+    }
+
+    void refreshDerivedStats() {
+        if (stats == null) {
+            return;
+        }
+        maxHp = stats.getMaxHp();
+        hp = stats.getCurrentHp();
+        level = stats.getLevel();
+        exp = stats.getExp();
+        str = stats.getTotalValue(Stats.StatType.STRENGTH);
+        def = stats.getTotalValue(Stats.StatType.DEFENSE);
     }
 
     @Override
@@ -52,4 +84,6 @@ class Enemy extends Entity {
             sprite.update(dt);
         }
     }
+
+
 }

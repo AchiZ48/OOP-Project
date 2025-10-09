@@ -37,11 +37,11 @@ class TitleScreen {
 
         // Title text
         g.setColor(Color.WHITE);
-        g.setFont(FontCustom.PressStart2P.deriveFont(Font.PLAIN, 32));
+        g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 32));
         drawCenteredString(g, "Solstice Warriors", gp.vw / 2, gp.vh - 48);
 
         // Subtitle
-        g.setFont(FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16));
+        g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 16));
         drawCenteredString(g, "Press ENTER to Start", gp.vw / 2, gp.vh - 80);
 
         // Footer/edition label

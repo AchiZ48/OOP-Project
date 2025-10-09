@@ -109,7 +109,7 @@ class StatsMenuController {
         g.setColor(new Color(120, 180, 255));
         g.drawRoundRect(x, y, width, height, 18, 18);
 
-        Font headerFont = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
+        Font headerFont = FontCustom.MainFont.deriveFont(Font.PLAIN, 16);
         g.setFont(headerFont);
         FontMetrics headerMetrics = g.getFontMetrics();
         int textX = x + 20;
@@ -117,7 +117,7 @@ class StatsMenuController {
         g.setColor(Color.WHITE);
         g.drawString("Party Status", textX, headerBaseline);
 
-        Font itemFont = FontCustom.PressStart2P.deriveFont(Font.PLAIN, 16);
+        Font itemFont = FontCustom.MainFont.deriveFont(Font.PLAIN, 16);
         g.setFont(itemFont);
         FontMetrics itemMetrics = g.getFontMetrics();
         int listTop = headerBaseline + 10;

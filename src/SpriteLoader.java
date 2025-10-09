@@ -7,12 +7,11 @@ final class SpriteLoader {
     private SpriteLoader() {
     }
 
-    static Sprite loadSheet(String path, int frameW, int frameH, double fps) throws IOException {
+    static Sprite loadSheet(String path, int frameW, int frameH) throws IOException {
         BufferedImage img = readImage(path);
         int framesPerRow = img.getWidth()/frameW;
         int rows = img.getHeight()/frameH;
-        fps = framesPerRow;
-        return Sprite.fromSheet(img, frameW, frameH, framesPerRow, rows, fps);
+        return Sprite.fromSheet(img, frameW, frameH, framesPerRow, rows, framesPerRow);
     }
 
     private static BufferedImage readImage(String path) throws IOException {
