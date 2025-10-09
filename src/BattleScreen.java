@@ -7,22 +7,25 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.StringJoiner;
 
 public class BattleScreen {
     GamePanel gp;
     Sprite backgroundSprite;
     Sprite nameBannerSprite;
     List<Player> party;
-    Enemy enemy;
+    List<Enemy> enemies;
     int currentPlayerIndex = 0;
     List<Skill> skills;
     int selectedSkill = 0;
     boolean waitingForInput = true;
     String lastAction = "";
     private int preparedTurnIndex = -1;
+    private int selectedEnemyIndex = 0;
     final Map<String, Sprite> backSpriteCache = new HashMap<>();
 
     static class Skill {
@@ -64,13 +67,24 @@ public class BattleScreen {
             return null;
         }
     }
-    void startBattle(List<Player> party, Enemy enemy, boolean ambush) {
+    void startBattle(List<Player> party, List<Enemy> enemies, boolean ambush) {
         this.party = new ArrayList<>(party);
-        this.enemy = enemy;
+        this.enemies = new ArrayList<>();
+        if (enemies != null) {
+            for (Enemy e : enemies) {
+                if (e == null) {
+                    continue;
+                }
+                Enemy battleEnemy = e.copy();
+                battleEnemy.resetForBattle();
+                this.enemies.add(battleEnemy);
+            }
+        }
         this.currentPlayerIndex = 0;
         this.waitingForInput = true;
         this.selectedSkill = 0;
-        this.lastAction = "Battle started vs " + enemy.name + "!";
+        this.selectedEnemyIndex = 0;
+        this.lastAction = "Battle started vs " + formatEnemyList() + "!";
         this.preparedTurnIndex = -1;
 
         for (Player member : this.party) {
@@ -83,19 +97,24 @@ public class BattleScreen {
             member.refreshDerivedStats();
         }
 
-        if (enemy != null) {
-            enemy.hp = enemy.maxHp;
+        if (this.enemies != null) {
+            for (Enemy e : this.enemies) {
+                if (e != null) {
+                    e.resetForBattle();
+                }
+            }
         }
 
-        if (ambush) {
-            this.lastAction = "Ambushed! " + enemy.name + " strikes first!";
+        if (ambush && getFirstAliveEnemy() != null) {
+            Enemy strikingEnemy = getFirstAliveEnemy();
+            this.lastAction = "Ambushed! " + strikingEnemy.name + " strikes first!";
             performEnemyTurn();
             this.waitingForInput = true;
             this.currentPlayerIndex = 0;
             this.preparedTurnIndex = -1;
         }
 
-        System.out.println("Battle started vs " + (enemy != null ? enemy.name : "Unknown"));
+        System.out.println("Battle started vs " + formatEnemyList());
     }
 
     void update(double dt) {
@@ -118,10 +137,10 @@ public class BattleScreen {
             }
         }
 
-        if (party == null || party.isEmpty() || enemy == null) return;
+        if (party == null || party.isEmpty() || enemies == null || enemies.isEmpty()) return;
         // Check win/lose conditions
-        if (enemy.hp <= 0) {
-            lastAction = "Victory! " + enemy.name + " defeated!";
+        if (areAllEnemiesDefeated()) {
+            lastAction = "Victory! All enemies defeated!";
             if (input.consumeIfPressed("ENTER") || input.consumeIfPressed("ESC")) {
                 gp.returnToWorld();
             }
@@ -160,6 +179,13 @@ public class BattleScreen {
                 selectedSkill = (selectedSkill + 1) % skills.size();
             }
 
+            if (input.consumeIfPressed("LEFT")) {
+                selectedEnemyIndex = findNextEnemyIndex(selectedEnemyIndex, -1);
+            }
+            if (input.consumeIfPressed("RIGHT")) {
+                selectedEnemyIndex = findNextEnemyIndex(selectedEnemyIndex, 1);
+            }
+
             // Quick skill selection
             if (input.consumeIfPressed("1")) selectedSkill = 0;
             if (input.consumeIfPressed("2")) selectedSkill = 1;
@@ -182,11 +208,18 @@ public class BattleScreen {
             // All players have acted, enemy turn
             performEnemyTurn();
             currentPlayerIndex = 0;
+            selectedEnemyIndex = findNextEnemyIndex(selectedEnemyIndex, 0);
         }
     }
 
     void performPlayerSkill(Player player, Skill skill) {
         if (player == null || skill == null) {
+            return;
+        }
+        Enemy target = getTargetedEnemy();
+        if (target == null && !"Guard".equals(skill.name)) {
+            lastAction = player.name + " has no targets!";
+            waitingForInput = false;
             return;
         }
         Stats stats = player.getStats();
@@ -207,9 +240,12 @@ public class BattleScreen {
             }
         } else {
             int strength = stats.getTotalValue(Stats.StatType.STRENGTH);
-            int damage = Math.max(1, strength + skill.power - enemy.def);
-            enemy.hp = Math.max(0, enemy.hp - damage);
-            lastAction = player.name + " used " + skill.name + " for " + damage + " damage!";
+            int damage = Math.max(1, strength + skill.power - target.def);
+            target.hp = Math.max(0, target.hp - damage);
+            lastAction = player.name + " used " + skill.name + " on " + target.name + " for " + damage + " damage!";
+            if (target.hp <= 0) {
+                lastAction += " " + target.name + " is defeated!";
+            }
             if (gp != null) {
                 gp.playSfx("skill_strike");
             }
@@ -219,27 +255,57 @@ public class BattleScreen {
         player.refreshDerivedStats();
         preparedTurnIndex = -1;
         waitingForInput = false;
-        System.out.println(lastAction + " (Enemy HP: " + enemy.hp + "/" + enemy.maxHp + ")");
+        if (target != null) {
+            System.out.println(lastAction + " (" + target.name + " HP: " + target.hp + "/" + target.maxHp + ")");
+        } else {
+            System.out.println(lastAction);
+        }
     }
 
     void performEnemyTurn() {
-        // Find a living target
+        if (enemies == null || enemies.isEmpty()) {
+            return;
+        }
+
         List<Player> aliveParty = party.stream()
                 .filter(p -> p.getStats().getCurrentHp() > 0)
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
 
         if (aliveParty.isEmpty()) return;
 
-        Player target = aliveParty.get((int)(Math.random() * aliveParty.size()));
-        Stats targetStats = target.getStats();
-        int defense = targetStats.getTotalValue(Stats.StatType.DEFENSE);
-        int damage = Math.max(1, enemy.str - defense);
-        targetStats.takeDamage(damage);
-        target.refreshDerivedStats();
+        StringBuilder actionLog = new StringBuilder();
+        boolean playedAttackSfx = false;
 
-        lastAction = enemy.name + " attacks " + target.name + " for " + damage + " damage!";
-        if (targetStats.getCurrentHp() <= 0) {
-            lastAction += " " + target.name + " is knocked out!";
+        for (Enemy actingEnemy : enemies) {
+            if (actingEnemy == null || actingEnemy.hp <= 0) {
+                continue;
+            }
+
+            if (aliveParty.isEmpty()) {
+                break;
+            }
+
+            Player target = aliveParty.get((int) (Math.random() * aliveParty.size()));
+            Stats targetStats = target.getStats();
+            int defense = targetStats.getTotalValue(Stats.StatType.DEFENSE);
+            int damage = Math.max(1, actingEnemy.str - defense);
+            targetStats.takeDamage(damage);
+            target.refreshDerivedStats();
+
+            if (actionLog.length() > 0) {
+                actionLog.append(' ');
+            }
+            actionLog.append(actingEnemy.name)
+                    .append(" attacks ")
+                    .append(target.name)
+                    .append(" for ")
+                    .append(damage)
+                    .append(" damage!");
+            if (targetStats.getCurrentHp() <= 0) {
+                actionLog.append(' ').append(target.name).append(" is knocked out!");
+                aliveParty.remove(target);
+            }
+            playedAttackSfx = true;
         }
 
         for (Player p : party) {
@@ -248,11 +314,97 @@ public class BattleScreen {
             p.refreshDerivedStats();
         }
 
-        if (gp != null) {
+        if (gp != null && playedAttackSfx) {
             gp.playSfx("enemy_attack");
         }
         preparedTurnIndex = -1;
+        lastAction = actionLog.length() > 0 ? actionLog.toString() : "The enemies hesitate...";
         System.out.println(lastAction);
+    }
+
+
+    private boolean areAllEnemiesDefeated() {
+        if (enemies == null || enemies.isEmpty()) {
+            return true;
+        }
+        for (Enemy enemy : enemies) {
+            if (enemy != null && enemy.hp > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private Enemy getFirstAliveEnemy() {
+        if (enemies == null) {
+            return null;
+        }
+        for (Enemy enemy : enemies) {
+            if (enemy != null && enemy.hp > 0) {
+                return enemy;
+            }
+        }
+        return null;
+    }
+
+    private Enemy getTargetedEnemy() {
+        if (enemies == null || enemies.isEmpty()) {
+            return null;
+        }
+        int index = findNextEnemyIndex(selectedEnemyIndex, 0);
+        if (index < 0 || index >= enemies.size()) {
+            return null;
+        }
+        selectedEnemyIndex = index;
+        return enemies.get(index);
+    }
+
+    private int findNextEnemyIndex(int currentIndex, int direction) {
+        if (enemies == null || enemies.isEmpty()) {
+            return -1;
+        }
+        int size = enemies.size();
+        int normalized = ((currentIndex % size) + size) % size;
+        if (direction == 0) {
+            for (int i = 0; i < size; i++) {
+                int idx = (normalized + i) % size;
+                Enemy candidate = enemies.get(idx);
+                if (candidate != null && candidate.hp > 0) {
+                    return idx;
+                }
+            }
+            return normalized;
+        }
+
+        int step = direction < 0 ? -1 : 1;
+        for (int i = 0; i < size; i++) {
+            normalized = (normalized + step + size) % size;
+            Enemy candidate = enemies.get(normalized);
+            if (candidate != null && candidate.hp > 0) {
+                return normalized;
+            }
+        }
+        return normalized;
+    }
+
+    private String formatEnemyList() {
+        if (enemies == null || enemies.isEmpty()) {
+            return "Unknown";
+        }
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        for (Enemy enemy : enemies) {
+            if (enemy != null && enemy.name != null) {
+                names.add(enemy.name);
+            }
+        }
+        if (names.isEmpty()) {
+            return "Unknown";
+        }
+        StringJoiner joiner = new StringJoiner(", ");
+        for (String name : names) {
+            joiner.add(name);
+        }
+        return joiner.toString();
     }
 
 
@@ -265,36 +417,61 @@ public class BattleScreen {
         // Battle title
         g.setColor(Color.WHITE);
         g.setFont(new Font("SansSerif", Font.BOLD, 24));
-        g.drawString("Battle vs: " + (enemy != null ? enemy.name : "Unknown"), 24, 40);
+        g.drawString("Battle vs: " + formatEnemyList(), 24, 40);
 
-        // Draw enemy
-        if (enemy != null) {
-            // Position enemy in center-right
-            int enemyX = gp.vw - 200;
-            int enemyY = 100;
-            enemy.setPrecisePosition(enemyX, enemyY);
-
-            // Create a simple camera for enemy rendering
+        // Draw enemies
+        if (enemies != null && !enemies.isEmpty()) {
             Camera battleCam = new Camera(gp.vw, gp.vh, gp.map);
             battleCam.setCenter(gp.vw / 2.0, gp.vh / 2.0);
 
-            enemy.draw(g, battleCam);
+            int drawableCount = 0;
+            for (Enemy enemy : enemies) {
+                if (enemy != null) {
+                    drawableCount++;
+                }
+            }
+            int spacing = 120;
+            int startX = gp.vw - 200 - Math.max(0, drawableCount - 1) * spacing / 2;
+            int index = 0;
+            for (int i = 0; i < enemies.size(); i++) {
+                Enemy enemy = enemies.get(i);
+                if (enemy == null) {
+                    continue;
+                }
+                int enemyX = startX + index * spacing;
+                int enemyY = 100;
+                enemy.setPrecisePosition(enemyX, enemyY);
 
-            // Enemy HP bar
-            int barW = 100, barH = 8;
-            int barX = enemyX, barY = enemyY - 20;
+                Composite oldComposite = g.getComposite();
+                if (enemy.hp <= 0) {
+                    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.35f));
+                }
+                enemy.draw(g, battleCam);
+                g.setComposite(oldComposite);
 
-            g.setColor(Color.RED);
-            g.fillRect(barX, barY, barW, barH);
-            g.setColor(Color.GREEN);
-            int hpWidth = (int) (barW * enemy.hp / (double) enemy.maxHp);
-            g.fillRect(barX, barY, hpWidth, barH);
-            g.setColor(Color.WHITE);
-            g.drawRect(barX, barY, barW, barH);
+                if (i == selectedEnemyIndex && enemy.hp > 0) {
+                    g.setColor(Color.YELLOW);
+                    g.drawRect(enemyX - 8, enemyY - 8, enemy.w + 16, enemy.h + 16);
+                }
 
-            // Enemy HP text
-            g.setFont(new Font("Monospaced", Font.PLAIN, 12));
-            g.drawString(enemy.hp + "/" + enemy.maxHp, barX, barY - 4);
+                // Enemy HP bar
+                int barW = 100, barH = 8;
+                int barX = enemyX;
+                int barY = enemyY - 20;
+
+                g.setColor(Color.RED);
+                g.fillRect(barX, barY, barW, barH);
+                g.setColor(enemy.hp > 0 ? Color.GREEN : Color.DARK_GRAY);
+                int hpWidth = enemy.maxHp > 0 ? (int) (barW * enemy.hp / (double) enemy.maxHp) : 0;
+                g.fillRect(barX, barY, hpWidth, barH);
+                g.setColor(Color.WHITE);
+                g.drawRect(barX, barY, barW, barH);
+
+                // Enemy HP text
+                g.setFont(new Font("Monospaced", Font.PLAIN, 12));
+                g.drawString(enemy.hp + "/" + enemy.maxHp, barX, barY - 4);
+                index++;
+            }
         }
 
         // Party status (left side)

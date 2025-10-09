@@ -5,6 +5,10 @@ class Enemy extends Entity {
     private static final long serialVersionUID = 1L;
     private static final int DEFAULT_SCALE = 3;
 
+    int baseMaxHp;
+    int baseStr;
+    int baseDef;
+
     public Enemy(String name, Sprite spr, double x, double y) {
         this.name = name;
         this.sprite = spr;
@@ -15,6 +19,52 @@ class Enemy extends Entity {
         this.level = 1;
         this.str = 4;
         this.def = 1;
+        setBaseStatsFromCurrent();
+    }
+
+    private Enemy(Enemy other) {
+        this.name = other.name;
+        this.sprite = other.sprite != null ? other.sprite.copy() : null;
+        this.w = other.w;
+        this.h = other.h;
+        this.x = other.x;
+        this.y = other.y;
+        this.posX = other.posX;
+        this.posY = other.posY;
+        this.maxHp = other.maxHp;
+        this.hp = other.hp;
+        this.level = other.level;
+        this.exp = other.exp;
+        this.str = other.str;
+        this.def = other.def;
+        this.id = other.id;
+        this.baseMaxHp = other.baseMaxHp;
+        this.baseStr = other.baseStr;
+        this.baseDef = other.baseDef;
+    }
+
+    Enemy copy() {
+        return new Enemy(this);
+    }
+
+    void setBaseStatsFromCurrent() {
+        this.baseMaxHp = this.maxHp;
+        this.baseStr = this.str;
+        this.baseDef = this.def;
+    }
+
+    void resetToBaseStats() {
+        this.maxHp = baseMaxHp;
+        this.hp = maxHp;
+        this.str = baseStr;
+        this.def = baseDef;
+    }
+
+    void resetForBattle() {
+        this.hp = maxHp;
+        if (sprite != null) {
+            sprite.resetFrame();
+        }
     }
 
     static Enemy createSample(String name, double x, double y) {

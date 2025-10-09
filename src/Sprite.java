@@ -54,6 +54,15 @@ class Sprite implements Serializable {
         return new Sprite(sheet, frameW, frameH, framesPerRow, rows, fps, true);
     }
 
+    Sprite copy() {
+        Sprite clone = new Sprite(sheet, frameW, frameH, framesPerRow, rows, fps, supportsAnimation);
+        clone.currentFrame = this.currentFrame;
+        clone.currentRow = this.currentRow;
+        clone.playing = this.playing;
+        clone.timeAccumulator = 0.0;
+        return clone;
+    }
+
     void update(double dt) {
         if (!supportsAnimation || !playing || fps <= 0) {
             return;

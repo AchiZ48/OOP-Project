@@ -7,6 +7,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Comparator;
@@ -25,6 +26,9 @@ public class GamePanel extends JPanel {
     Camera camera;
     List<Player> party;
     Enemy demoEnemy;
+    final EnemyRegister enemyRegister = new EnemyRegister();
+    final EnemyScaler enemyScaler = new EnemyScaler();
+    final EnemyPartyGenerator enemyPartyGenerator = new EnemyPartyGenerator(enemyRegister, enemyScaler);
     WorldObjectManager worldObjectManager;
     final List<WorldMessage> worldMessages = new ArrayList<>();
     private static final double WORLD_MESSAGE_DURATION = 3.5;
@@ -84,8 +88,10 @@ public class GamePanel extends JPanel {
         }
 
         camera = new Camera(vw, vh, map);
+        initializeEnemyRegistry();
         createDefaultParty();
-        demoEnemy = Enemy.createSample("Slime", 400, 200);
+        demoEnemy = enemyRegister.create("slime");
+        demoEnemy.setPrecisePosition(400, 200);
 
         titleScreen = new TitleScreen(this);
         saveMenu = new SaveMenuScreen(this);
@@ -97,6 +103,28 @@ public class GamePanel extends JPanel {
         addHierarchyListener(e -> {
             if (isDisplayable()) requestFocusInWindow();
         });
+    }
+
+    private void initializeEnemyRegistry() {
+        Enemy slime = createEnemyTemplate("Slime", 180, 6, 2);
+        enemyRegister.register("slime", slime);
+
+        Enemy slimeSoldier = createEnemyTemplate("Slime Soldier", 220, 7, 3);
+        enemyRegister.register("slime_soldier", slimeSoldier);
+
+        Enemy slimeBoss = createEnemyTemplate("Slime King", 420, 10, 5);
+        enemyRegister.register("slime_boss", slimeBoss);
+    }
+
+    private Enemy createEnemyTemplate(String name, int baseHp, int str, int def) {
+        Enemy enemy = Enemy.createSample(name, 0, 0);
+        enemy.maxHp = baseHp;
+        enemy.hp = enemy.maxHp;
+        enemy.str = str;
+        enemy.def = def;
+        enemy.level = 1;
+        enemy.setBaseStatsFromCurrent();
+        return enemy;
     }
 
     void createDefaultParty() {
@@ -749,7 +777,7 @@ public class GamePanel extends JPanel {
         spendBossKeys();
         queueWorldMessage("Boss gate unlocked!");
         queueWorldMessage("Remaining keys: " + bossKeys + "/" + BOSS_KEYS_REQUIRED + ".");
-        startBattle(false);
+        startBossBattle("slime_boss");
     }
 
     void enterBattle(boolean ambush) {
@@ -757,16 +785,66 @@ public class GamePanel extends JPanel {
     }
 
     private void startBattle(boolean ambush) {
-        if (party != null && !party.isEmpty() && demoEnemy != null) {
-            showPauseOverlay = false;
-            closeFastTravelMenu();
-            statsMenu.close(true);
-            dialogManager.clear();
-            battleScreen.startBattle(new ArrayList<>(party), demoEnemy, ambush);
-            playBattleTrack(ambush ? "battle_ambush" : "battle_default");
-            state = State.BATTLE;
-            System.out.println(ambush ? "Ambush battle started!" : "Battle started!");
+        if (party == null || party.isEmpty()) {
+            return;
         }
+        int averageLevel = getAveragePartyLevel();
+        List<Enemy> enemyParty = createSkirmishEncounter(averageLevel);
+        initiateBattle(enemyParty, ambush, ambush ? "battle_ambush" : "battle_default");
+    }
+
+    void startBossBattle(String bossId) {
+        if (party == null || party.isEmpty()) {
+            return;
+        }
+        List<Enemy> bossParty = enemyPartyGenerator.createBossEncounter(bossId, getAveragePartyLevel());
+        initiateBattle(bossParty, false, "battle_boss");
+    }
+
+    private void initiateBattle(List<Enemy> enemyParty, boolean ambush, String trackId) {
+        if (enemyParty == null || enemyParty.isEmpty()) {
+            System.out.println("No enemies available for the encounter.");
+            return;
+        }
+        showPauseOverlay = false;
+        closeFastTravelMenu();
+        statsMenu.close(true);
+        dialogManager.clear();
+        battleScreen.startBattle(new ArrayList<>(party), enemyParty, ambush);
+        playBattleTrack(trackId);
+        state = State.BATTLE;
+        System.out.println((ambush ? "Ambush battle started" : "Battle started") +
+                " against " + enemyParty.size() + " enemies!");
+    }
+
+    private int getAveragePartyLevel() {
+        if (party == null || party.isEmpty()) {
+            return 1;
+        }
+        int totalLevels = 0;
+        int count = 0;
+        for (Player member : party) {
+            if (member == null) {
+                continue;
+            }
+            totalLevels += Math.max(1, member.getStats().getLevel());
+            count++;
+        }
+        if (count == 0) {
+            return 1;
+        }
+        return Math.max(1, Math.round((float) totalLevels / count));
+    }
+
+    private List<Enemy> createSkirmishEncounter(int averageLevel) {
+        List<String> pool = Arrays.asList("slime", "slime_soldier");
+        int enemyCount = Math.max(1, Math.min(3, party.size()));
+        List<String> blueprint = new ArrayList<>();
+        for (int i = 0; i < enemyCount; i++) {
+            String selectedId = pool.get((int) (Math.random() * pool.size()));
+            blueprint.add(selectedId);
+        }
+        return enemyPartyGenerator.createPartyFromBlueprint(blueprint, averageLevel);
     }
     void returnToWorld() {
         showPauseOverlay = false;
