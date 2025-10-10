@@ -40,15 +40,11 @@ public class BattleScreen {
 
     public BattleScreen(GamePanel gp) {
         this.gp = gp;
-        try {
-            backgroundSprite = SpriteLoader.loadSheet("resources/battlebg/bg1.png", 640, 360);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
 
         skills = Arrays.asList(
-                new Skill("Strike", 1, 6, "Basic physical attack"),
-                new Skill("Power Attack", 5, 10, "Strong physical attack"),
+                new Skill("Strike", 1, 6, "Basic attack"),
+                new Skill("Power Attack", 5, 10, "Strong attack"),
                 new Skill("Guard", 1, 0, "Reduce incoming damage")
         );
     }
@@ -63,6 +59,18 @@ public class BattleScreen {
     }
 
     void startBattle(List<Player> party, List<Enemy> enemy, boolean ambush) {
+        Player leader = gp.party.get(gp.activeIndex);
+        String path;
+        switch (gp.map.getZone((int)(leader.x / 32), (int)(leader.y / 32))){
+            case 1 : path = "bg2"; break;
+            case 4 : path = "snow"; break;
+            default: path = "bg1"; break;
+        }
+        try {
+            backgroundSprite = SpriteLoader.loadSheet("resources/battlebg/" + path +".png", 640, 360);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         this.party = new ArrayList<>(party);
         this.enemy = new ArrayList<>(enemy); // ต้องไม่ว่าง
         System.out.println("Enttete");
@@ -81,11 +89,10 @@ public class BattleScreen {
             Stats stats = member.getStats();
             stats.clearTemporaryModifiers();
             stats.setCurrentBattlePoints(1);
-            member.refreshDerivedStats();
         }
 
         for (Enemy e : this.enemy) {
-            if (e != null) e.hp = e.maxHp;
+            if (e != null) e.stats.setCurrentHp(e.stats.getMaxHp());
         }
 
         if (ambush) {
@@ -138,7 +145,6 @@ public class BattleScreen {
             if (preparedTurnIndex != currentPlayerIndex) {
                 Stats currentStats = currentPlayer.getStats();
                 currentStats.restoreBattlePoints(1);
-                currentPlayer.refreshDerivedStats();
                 preparedTurnIndex = currentPlayerIndex;
             }
             if (currentPlayer.getStats().getCurrentHp() <= 0) { nextTurn(); return; }
@@ -158,7 +164,6 @@ public class BattleScreen {
                         case 1: { // Meditate -> restore more BP then end turn
                             Stats stats = currentPlayer.getStats();
                             stats.restoreBattlePoints(2);
-                            currentPlayer.refreshDerivedStats();
                             lastAction = currentPlayer.name + " meditates and restores " + "2" + " BP!";
                             if (gp != null) gp.playSfx("guard"); // ใช้เสียงเดิมแทนก่อน
                             preparedTurnIndex = -1;
@@ -204,6 +209,7 @@ public class BattleScreen {
         if (currentPlayerIndex >= party.size()) {
             // All players have acted, enemy turn
             performEnemyTurn();
+            currentEnemyIndex++;
             currentPlayerIndex = 0;
         }
     }
@@ -228,13 +234,13 @@ public class BattleScreen {
             Enemy target = null;
             if (enemy != null) {
                 for (Enemy e : enemy) {
-                    if (e != null && e.hp > 0) { target = e; break; }
+                    if (e != null && e.stats.getCurrentHp() > 0) { target = e; break; }
                 }
             }
             if (target != null) {
                 int strength = stats.getTotalValue(Stats.StatType.STRENGTH);
-                int damage = Math.max(1, strength + skill.power - target.def);
-                target.hp = Math.max(0, target.hp - damage);
+                int damage = Math.max(1, strength + skill.power - target.stats.getTotalValue(Stats.StatType.DEFENSE));
+                target.stats.setCurrentHp(Math.max(0, target.stats.getCurrentHp() - damage));
                 lastAction = player.name + " used " + skill.name + " on " + target.name + " for " + damage + " damage!";
             } else {
                 lastAction = player.name + " used " + skill.name + " but no valid target.";
@@ -245,12 +251,11 @@ public class BattleScreen {
         }
 
         stats.regenerateBattlePoints(0.08);
-        player.refreshDerivedStats();
         preparedTurnIndex = -1;
         waitingForInput = false;
 
         // แสดงสถานะสั้น ๆ แทนการอ้าง enemy เดี่ยว
-        long alive = (enemy != null ? enemy.stream().filter(e -> e != null && e.hp > 0).count()
+        long alive = (enemy != null ? enemy.stream().filter(e -> e != null && e.stats.getCurrentHp() > 0).count()
                 : 0);
         System.out.println(lastAction + " (Enemies alive: " + alive + ")");
     }
@@ -258,7 +263,7 @@ public class BattleScreen {
     private boolean areAllEnemiesDead() {
         if (enemy == null || enemy.isEmpty()) return true;
         for (Enemy e : enemy) {
-            if (e != null && e.hp > 0) return false;
+            if (e != null && e.stats.getCurrentHp() > 0) return false;
         }
         return true;
     }
@@ -288,7 +293,7 @@ public class BattleScreen {
         if (enemy != null && !enemy.isEmpty()) {
             // หลายศัตรู: ศัตรูที่ยังมีชีวิตโจมตีคนละ 1 ครั้ง
             for (Enemy e : enemy) {
-                if (e == null || e.hp <= 0) continue;
+                if (e == null || e.stats.getCurrentHp() <= 0) continue;
 
                 Player target = aliveParty.get((int)(Math.random() * aliveParty.size()));
                 Stats targetStats = target.getStats();
@@ -296,11 +301,10 @@ public class BattleScreen {
 
                 // ใส่สุ่มนิดหน่อยให้ดาเมจมีสวิง
                 int roll = (int)Math.round(-2 + Math.random()*5); // -2..+2
-                int raw = e.str + roll - defense;
+                int raw = e.stats.getTotalValue(Stats.StatType.STRENGTH) + roll - defense;
                 int damage = Math.max(1, raw);
 
                 targetStats.takeDamage(damage);
-                target.refreshDerivedStats();
 
                 sb.append(e.name).append(" attacks ").append(target.name)
                         .append(" for ").append(damage).append("! ");
@@ -319,13 +323,12 @@ public class BattleScreen {
             }
         }
 
-        lastAction = sb.length() > 0 ? sb.toString() : "Enemies hesitate...";
+        lastAction = !sb.isEmpty() ? sb.toString() : "Enemies hesitate...";
 
         // ล้างบัฟชั่วคราวฝั่งผู้เล่นเมื่อจบรอบศัตรู
         for (Player p : party) {
             Stats stats = p.getStats();
             stats.clearTemporaryModifiers();
-            p.refreshDerivedStats();
         }
 
         preparedTurnIndex = -1;
@@ -395,14 +398,14 @@ public class BattleScreen {
             g.setColor(Color.RED);
             g.fillRect(barX, barY, barW, barH);
             g.setColor(Color.GREEN);
-            int hpWidth = (int) (barW * currentEnemy.hp / (double) currentEnemy.maxHp);
+            int hpWidth = (int) (barW * currentEnemy.stats.getCurrentHp() / (double) currentEnemy.stats.getMaxHp());
             g.fillRect(barX, barY, hpWidth, barH);
             g.setColor(Color.WHITE);
             g.drawRect(barX, barY, barW, barH);
 
             // Enemy HP text
             g.setFont(FontCustom.MainFont.deriveFont(12.0f));
-            g.drawString(currentEnemy.name + " Lvl " +currentEnemy.level , barX, barY - 4);
+            g.drawString(currentEnemy.name + " Lvl " +currentEnemy.stats.getLevel() , barX, barY - 4);
         }
 
         // Player selection panel (bottom)
