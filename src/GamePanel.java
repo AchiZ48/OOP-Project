@@ -85,7 +85,6 @@ public class GamePanel extends JPanel {
 
         camera = new Camera(vw, vh, map);
         createDefaultParty();
-        createDefaultEnemies();
 
         titleScreen = new TitleScreen(this);
         saveMenu = new SaveMenuScreen(this);
@@ -100,7 +99,8 @@ public class GamePanel extends JPanel {
     }
     void createDefaultEnemies(){
         enemies = new ArrayList<>();
-        enemies.add(Enemy.createSample("slime", 3800, 3800));
+        enemies.add(Enemy.createSample("slime"));
+        enemies.add(Enemy.createSample("moodeng"));
     }
     void createDefaultParty() {
         party = new ArrayList<>();
@@ -473,7 +473,9 @@ public class GamePanel extends JPanel {
         if (!dialogActive && !fastTravelMenuOpen && !showPauseOverlay) {
             if (ambushManager.tryTrigger(leader, map, dt)) {
                 queueWorldMessage("Ambushed!");
-                enterBattle(true);
+                int zoneId = map.getZone((int)(leader.x / 32), (int)(leader.y / 32));
+                System.out.println(zoneId);
+                startRandomEncounter(true, zoneId);
                 return;
             }
         }
@@ -654,24 +656,18 @@ public class GamePanel extends JPanel {
         if (leader == null || map == null) {
             return;
         }
-        if (map.zoneLayer == null) {
-            if (!"ambient_overworld".equals(currentAmbientTrack)) {
-                currentAmbientTrack = "ambient_overworld";
-                playAmbientTrack(currentAmbientTrack);
-            }
-            return;
-        }
         int tileX = Math.max(0, Math.min(map.cols - 1, (int) (leader.getPreciseX() / map.tileW)));
         int tileY = Math.max(0, Math.min(map.rows - 1, (int) (leader.getPreciseY() / map.tileH)));
-        int zoneId = map.zoneLayer[tileY][tileX];
+        int zoneId = map.getZone(tileX,tileY);
         if (zoneId == lastAmbientZoneId) {
             return;
         }
         lastAmbientZoneId = zoneId;
         String track = switch (zoneId) {
-            case 1027 -> "ambient_ruins";
-            case 1028 -> "ambient_cavern";
-            case 1026 -> "ambient_forest";
+            case 769 -> "ambient_plain";
+            case 770 -> "ambient_cavern";
+            case 771 -> "ambient_forest";
+            case 772 -> "ambient_tundra";
             default -> "ambient_overworld";
         };
         if (!track.equals(currentAmbientTrack)) {
@@ -753,6 +749,8 @@ public class GamePanel extends JPanel {
         startBattle(false);
     }
 
+    private final EnemyPartyGenerator enemyPartyGen = new EnemyPartyGenerator();
+
     void enterBattle(boolean ambush) {
         startBattle(ambush);
     }
@@ -771,6 +769,46 @@ public class GamePanel extends JPanel {
             System.out.println(ambush ? "Ambush battle started!" : "Battle started!");
         }
     }
+
+
+    private int avgPartyLevel(){
+        if (party == null || party.isEmpty()) return 1;
+        int sum=0, n=0;
+        for (Player p : party){
+            if (p != null && p.getStats()!=null){ sum += p.getStats().getLevel(); n++; }
+        }
+        return Math.max(1, n==0?1:(int)Math.round(sum/(double)n));
+    }
+
+    public void startRandomEncounter(boolean ambush, int zoneId){
+        if (party == null || party.isEmpty()) return;
+        showPauseOverlay = false;
+        closeFastTravelMenu();
+        statsMenu.close(true);
+        dialogManager.clear();
+        int apl = avgPartyLevel();
+        List<Enemy> foes = enemyPartyGen.rollRandomParty(apl, zoneId);
+        if (foes.isEmpty()) return;
+        battleScreen.startBattle(new java.util.ArrayList<>(party), foes, ambush);
+        playBattleTrack(ambush ? "battle_ambush" : "battle_default");
+        state = State.BATTLE;
+        System.out.println("Random encounter " + zoneId + " APL=" + apl);
+    }
+
+    public void startBossBattle(String bossId, int bossLevel, int minions, boolean ambush){
+        if (party == null || party.isEmpty()) return;
+        showPauseOverlay = false;
+        closeFastTravelMenu();
+        statsMenu.close(true);
+        dialogManager.clear();// ensure templates
+        java.util.List<Enemy> foes = enemyPartyGen.makeBossParty(bossId, bossLevel, minions);
+        if (foes.isEmpty()) return;
+        battleScreen.startBattle(new java.util.ArrayList<>(party), foes, ambush);
+        playBattleTrack("battle_boss");
+        state = State.BATTLE;
+        System.out.println("Boss battle " + bossId + " Lv." + bossLevel);
+    }
+
     void returnToWorld() {
         showPauseOverlay = false;
         closeFastTravelMenu();
@@ -1037,7 +1075,6 @@ public class GamePanel extends JPanel {
             }
             int healAmount = (int) Math.max(1, Math.round(maxHp * clamped));
             stats.heal(healAmount);
-            player.refreshDerivedStats();
         }
     }
 
@@ -1048,7 +1085,6 @@ public class GamePanel extends JPanel {
         for (Player player : party) {
             if (player != null) {
                 player.getStats().fullHeal();
-                player.refreshDerivedStats();
             }
         }
     }

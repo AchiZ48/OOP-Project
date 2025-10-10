@@ -220,12 +220,7 @@ class HudRenderer {
             maxHp = stats.getMaxHp();
             bp = stats.getCurrentBattlePoints();
             maxBp = stats.getMaxBattlePoints();
-        } else {
-            hp = player.hp;
-            maxHp = player.maxHp;
-            bp = 0;
-            maxBp = 0;
-        }
+        } else return;
 
         int barWidth = w - 20;
         String hpLabel = String.format("%d/%d", Math.max(0, hp), Math.max(1, maxHp));
