@@ -25,7 +25,6 @@ class Player extends Entity {
     private Direction facing = Direction.DOWN;
     private static final double COLLIDER_INSET = 6.0;
     private static final double FOOT_HEIGHT = 0;
-    private final Stats stats;
 
     public Player(String name, Sprite spr, double x, double y) {
         this.name = name;
@@ -34,7 +33,6 @@ class Player extends Entity {
         this.w = 32;
         this.h = 64;
         this.stats = Stats.createDefault();
-        refreshDerivedStats();
 
         applyFacingToSprite();
     }
@@ -43,24 +41,12 @@ class Player extends Entity {
         return stats;
     }
 
-    void refreshDerivedStats() {
-        if (stats == null) {
-            return;
-        }
-        maxHp = stats.getMaxHp();
-        hp = stats.getCurrentHp();
-        level = stats.getLevel();
-        exp = stats.getExp();
-        str = stats.getTotalValue(Stats.StatType.STRENGTH);
-        def = stats.getTotalValue(Stats.StatType.DEFENSE);
-    }
 
     void applyStats(Stats newStats) {
         if (newStats == null) {
             return;
         }
         stats.copyFrom(newStats);
-        refreshDerivedStats();
     }
 
     static Player createSample(String name, double x, double y) {
@@ -101,7 +87,6 @@ class Player extends Entity {
         }
         stats.fullHeal();
         stats.fullRestoreBattlePoints();
-        player.refreshDerivedStats();
         return player;
     }
 

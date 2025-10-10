@@ -7,8 +7,7 @@ public abstract class Entity implements Serializable {
     int w, h;
     double posX, posY;
     Sprite sprite;
-    int hp, maxHp, level, exp, str, def;
-    int id;
+    public Stats stats = new Stats();
 
     abstract void update(double dt);
 

@@ -2,7 +2,7 @@ import java.io.Serializable;
 import java.util.EnumMap;
 import java.util.Map;
 
-class Stats implements Serializable {
+public class Stats implements Serializable {
     private static final long serialVersionUID = 1L;
 
     enum StatType {

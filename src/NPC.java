@@ -40,12 +40,12 @@ abstract class NPC extends Entity implements Interactable {
     }
 
     protected void setHealth(int currentHp, int maximumHp) {
-        maxHp = Math.max(1, maximumHp);
-        hp = Math.max(0, Math.min(maxHp, currentHp));
+        this.stats.setBaseValue(Stats.StatType.MAX_HP, Math.max(1, maximumHp));
+        this.stats.setCurrentHp(Math.max(0, (Math.min(this.stats.getMaxHp(), currentHp))));
     }
 
     protected int getCurrentHp() {
-        return hp;
+        return this.stats.getCurrentHp();
     }
 
     @Override
