@@ -7,24 +7,32 @@ import java.util.Locale;
 public class Enemy extends Entity {
     // --- added for dynamic encounters (non-breaking) ---
     public String id;
-    private final Stats stats;
 
     private static final long serialVersionUID = 1L;
     private static final int DEFAULT_SCALE = 3;
 
 
+    public Enemy(){
+        this.stats = Stats.createDefault();
+    }
 
-
-    public Enemy(String name, double x, double y) {
+    public Enemy(String name) {
         this.name = name;
         this.stats = Stats.createDefault();
     }
+    public Enemy(String name, double x, double y) {
+        this.x = x;
+        this.y = y;
+        this.name = name;
+        this.stats = Stats.createDefault();
+    }
+
 
     Stats getStats() {
         return stats;
     }
 
-    static Enemy createSample(String name, double x, double y) {
+    static Enemy createSample(String name) {
         Sprite spr;
         try {
             BufferedImage img = ImageIO.read(new File("resources/sprites/" + name.toLowerCase() + ".png"));
@@ -40,7 +48,7 @@ public class Enemy extends Entity {
             spr = Sprite.fromSheet(bi, 16, 16, 4, 1, 4);
         }
 
-        Enemy enemy = new Enemy(name, x, y);
+        Enemy enemy = new Enemy(name);
         Stats stats = enemy.getStats();
         switch (name.toLowerCase(Locale.ROOT)) {
             case "slime":
@@ -61,22 +69,10 @@ public class Enemy extends Entity {
                 break;
         }
         stats.fullHeal();
-        stats.fullRestoreBattlePoints();
-        enemy.refreshDerivedStats();
         return enemy;
     }
 
-    void refreshDerivedStats() {
-        if (stats == null) {
-            return;
-        }
-        maxHp = stats.getMaxHp();
-        hp = stats.getCurrentHp();
-        level = stats.getLevel();
-        exp = stats.getExp();
-        str = stats.getTotalValue(Stats.StatType.STRENGTH);
-        def = stats.getTotalValue(Stats.StatType.DEFENSE);
-    }
+
 
     @Override
     void update(double dt) {
