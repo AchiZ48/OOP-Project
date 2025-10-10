@@ -39,14 +39,14 @@ class AmbushManager {
         finalChance = Math.max(0.01, finalChance);
 
         boolean ambush = random.nextDouble() < finalChance;
-        cooldown = ambush ? 20.0 : 15.0;
+        cooldown = ambush ? 5.0 : 2.0;
         lastPosX = posX;
         lastPosY = posY;
         return ambush;
     }
 
     void reset() {
-        cooldown = 2.0;
+        cooldown = 5.0;
         lastPosX = Double.NaN;
         lastPosY = Double.NaN;
     }
@@ -64,9 +64,10 @@ class AmbushManager {
 
     private double baseChanceForZone(int zoneId) {
         return switch (zoneId) {
-            case 1 -> 0.9; // ruins
-            case 2 -> 0.25; // cavern
-            case 3 -> 0.12; // forest
+            case 1 -> 0.12; // plain
+            case 2 -> 0.25; // forest
+            case 3 -> 0.35; // ruin
+            case 4 -> 0.40; // snow
             default -> 0.0;
         };
     }
