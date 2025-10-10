@@ -9,11 +9,6 @@ import java.util.List;
 public class TileMap {
     // ======== public fields (คงชื่อเดิมไว้ให้เข้ากับโค้ดเก่า) ========
     int tileW, tileH, cols, rows, pixelWidth, pixelHeight;
-    int[][] groundLayer;
-    int[][] ground2Layer;
-    int[][] decorationLayer;
-    int[][] collisionLayer;
-    int[][] zoneLayer;
     boolean decorationVisible;
     List<TilesetEntry> tilesets = new ArrayList<>();
 
@@ -45,9 +40,6 @@ public class TileMap {
     public TileMap() {}
 
     // ======== constants for Tiled flip flags ========
-    private static final long FLIP_H = 0x80000000L;
-    private static final long FLIP_V = 0x40000000L;
-    private static final long FLIP_D = 0x20000000L;
     private static final long GID_MASK = 0x0FFFFFFFL;
 
     // ---------------- Load TMX ----------------
@@ -98,7 +90,7 @@ public class TileMap {
 
             // อ่าน properties
             Map<String,String> props = readProperties(lEl);
-            int type = parseInt(props.get("type"), 0);
+            int type = parseInt(props.get("type"));
 
             Element dataEl = (Element) lEl.getElementsByTagName("data").item(0);
             // รองรับ CSV เท่านั้นในโค้ดนี้
@@ -116,10 +108,6 @@ public class TileMap {
                         long raw = Long.parseUnsignedLong(token);
                         int gid = (int)(raw & GID_MASK);
                         layerData[r][c] = gid;
-                        // หากจะใช้ flip flags ในอนาคต:
-                        // boolean flipH = (raw & FLIP_H) != 0;
-                        // boolean flipV = (raw & FLIP_V) != 0;
-                        // boolean flipD = (raw & FLIP_D) != 0;
                     } else {
                         layerData[r][c] = 0;
                     }
@@ -128,7 +116,7 @@ public class TileMap {
 
             // สร้าง Layer object
             Layer L = new Layer();
-            L.name = (name == null || name.isEmpty()) ? ("layer_" + i) : name;
+            L.name = name.isEmpty() ? "layer_" + i : name;
             L.visible = isVisible;
             L.type = type;
             L.data = layerData;
@@ -319,15 +307,6 @@ public class TileMap {
                 g.fillRect(wx, wy, tileW, tileH);
             });
         }
-        // รองรับของเดิม (ถ้าไม่มี layer ใหม่)
-        if (collisionLayers.isEmpty() && collisionLayer != null) {
-            forVisibleTiles(collisionLayer, cam, (tileX, tileY, gid) -> {
-                if (gid <= 0) return;
-                int wx = tileX * tileW;
-                int wy = tileY * tileH;
-                g.fillRect(wx, wy, tileW, tileH);
-            });
-        }
     }
 
     public void drawZoneOverlay(Graphics2D g, Camera cam) {
@@ -367,17 +346,17 @@ public class TileMap {
             Element p = (Element) propList.item(i);
             String key = p.getAttribute("name");
             String v = p.getAttribute("value");
-            if (v == null || v.isEmpty()) v = p.getTextContent();
-            if (key != null && !key.isEmpty() && v != null) {
+            if (v.isEmpty()) v = p.getTextContent();
+            if (!key.isEmpty() && v != null) {
                 map.put(key, v.trim());
             }
         }
         return map;
     }
 
-    private static int parseInt(String s, int def) {
-        if (s == null) return def;
-        try { return Integer.parseInt(s.trim()); } catch (Exception e) { return def; }
+    private static int parseInt(String s) {
+        if (s == null) return 0;
+        try { return Integer.parseInt(s.trim()); } catch (Exception e) { return 0; }
     }
 
 

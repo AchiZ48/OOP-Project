@@ -32,8 +32,6 @@ class SaveData implements Serializable {
             Player p = Player.createSample(pd.name, pd.x, pd.y);
             if (pd.stats != null) {
                 p.applyStats(pd.stats);
-            } else {
-                p.refreshDerivedStats();
             }
             out.add(p);
         }
