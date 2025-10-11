@@ -24,10 +24,17 @@ public class BattleScreen {
     String lastAction = "";
     private int preparedTurnIndex = -1;
     final Map<String, Sprite> backSpriteCache = new HashMap<>();
-
+    private static final int SKILL_VISIBLE_MAX = 5;
+    private int skillScroll = 0;
     private static final String[] DEFEAT_OPTIONS = {"Load Last Save", "Main Menu"};
     private boolean defeatScreenActive = false;
     private int defeatMenuIndex = 0;
+    private static final String[] VICTORY_OPTIONS = {"Load Last Save", "Main Menu"};
+    private boolean victoryScreenActive = false;
+    private int victoryMenuIndex = 0;
+    private boolean bossBattleActive = false;
+    private boolean bossVictoryEndTriggered = false;
+
     String[] mainMenu = {"Attack", "Meditate", "Flee"};
     int mainMenuIndex = 0;
     boolean inSkillMenu = false;
@@ -46,9 +53,14 @@ public class BattleScreen {
 
     public BattleScreen(GamePanel gp) {
         this.gp = gp;
-
-
         skills = new ArrayList<>(SkillCatalog.all());
+    }
+
+    void setBossBattle(boolean bossBattleActive) {
+        this.bossBattleActive = bossBattleActive;
+        if (!bossBattleActive) {
+            bossVictoryEndTriggered = false;
+        }
     }
 
     private Sprite loadSprite(String path, int frameW, int framH) {
@@ -75,7 +87,6 @@ public class BattleScreen {
         }
         this.party = new ArrayList<>(party);
         this.enemy = new ArrayList<>(enemy);
-        System.out.println("Enttete");
         this.currentPlayerIndex = 0;
         this.currentEnemyIndex = 0;
         this.waitingForInput = true;
@@ -86,6 +97,12 @@ public class BattleScreen {
         this.mainMenuIndex = 0;
         this.inSkillMenu = false;
         this.victoryProcessed = false;
+        this.defeatScreenActive = false;
+        this.defeatMenuIndex = 0;
+        this.victoryScreenActive = false;
+        this.victoryMenuIndex = 0;
+        this.skillScroll = 0;
+        this.bossVictoryEndTriggered = false;
 
         for (Player member : this.party) {
             if (member == null) continue;
@@ -136,14 +153,40 @@ public class BattleScreen {
 
         if (party == null || party.isEmpty() || enemy == null) return;
 
+        if (victoryScreenActive) {
+            handleVictoryInput(input);
+            return;
+        }
         if (defeatScreenActive) {
             handleDefeatInput(input);
             return;
         }
 
         if (areAllEnemiesDead()) {
-            lastAction = "Victory! " + joinEnemyNames() + " defeated!";
-            if (input.consumeIfPressed("ENTER") || input.consumeIfPressed("ESC")) gp.returnToWorld();
+            if (bossBattleActive) {
+                if (!bossVictoryEndTriggered) {
+                    bossVictoryEndTriggered = true;
+                    victoryScreenActive = false;
+                    victoryMenuIndex = 0;
+                    lastAction = "Victory! The boss has fallen.";
+                    if (gp != null) {
+                        gp.stopBattleMusic();
+                        gp.endGameAfterBossVictory();
+                    }
+                    bossBattleActive = false;
+                }
+            } else {
+                if (!victoryProcessed) {
+                    gp.stopBattleMusic();
+                    gp.ensureAmbientMusicPlaying();
+                }
+                lastAction = "Victory! " + joinEnemyNames() + " defeated!";
+                if (input.consumeIfPressed("ENTER") || input.consumeIfPressed("ESC")) {
+                    bossBattleActive = false;
+                    victoryScreenActive = false;
+                    gp.returnToWorld();
+                }
+            }
             return;
         }
         if (isPartyWiped()) {
@@ -628,9 +671,79 @@ public class BattleScreen {
         g.setColor(Color.CYAN);
         g.setFont(FontCustom.MainFont.deriveFont(10.0f));
         FontMetrics fm = g.getFontMetrics();
-        g.drawString(lastAction, gp.vw - fm.stringWidth(lastAction), gp.vh - 10);
+        int logX = Math.max(24, gp.vw - fm.stringWidth(lastAction) - 24);
+        g.drawString(lastAction, logX, gp.vh - 10);
+        if (victoryScreenActive) {
+            drawVictoryOverlay(g);
+        }
         if (defeatScreenActive) {
             drawDefeatOverlay(g);
+        }
+    }
+
+    private void handleVictoryInput(InputManager input) {
+        if (!victoryScreenActive) {
+            return;
+        }
+        if (input.consumeIfPressed("UP")) {
+            victoryMenuIndex = (victoryMenuIndex - 1 + VICTORY_OPTIONS.length) % VICTORY_OPTIONS.length;
+            gp.playSfx("menu_move");
+        } else if (input.consumeIfPressed("DOWN")) {
+            victoryMenuIndex = (victoryMenuIndex + 1) % VICTORY_OPTIONS.length;
+            gp.playSfx("menu_move");
+        }
+        if (input.consumeIfPressed("ENTER")) {
+            gp.playSfx("menu_select");
+            switch (victoryMenuIndex) {
+                case 0 -> {
+                    if (gp.loadMostRecentSave()) {
+                        victoryScreenActive = false;
+                        bossBattleActive = false;
+                        gp.ensureAmbientMusicPlaying();
+                    } else {
+                        lastAction = "No recent save to load.";
+                        gp.playSfx("menu_cancel");
+                    }
+                }
+                case 1 -> {
+                    gp.returnToTitleFromBattle();
+                    victoryScreenActive = false;
+                    bossBattleActive = false;
+                }
+            }
+        } else if (input.consumeIfPressed("ESC")) {
+            victoryMenuIndex = 1;
+            gp.playSfx("menu_move");
+        }
+    }
+
+    private void drawVictoryOverlay(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 200));
+        g.fillRect(0, 0, gp.vw, gp.vh);
+
+        g.setFont(FontCustom.MainFont.deriveFont(Font.BOLD, 54f));
+        g.setColor(new Color(220, 200, 80));
+        String title = "VICTORY";
+        FontMetrics fm = g.getFontMetrics();
+        int titleX = (gp.vw - fm.stringWidth(title)) / 2;
+        int titleY = gp.vh / 2 - 90;
+        g.drawString(title, titleX, titleY);
+
+        g.setFont(FontCustom.MainFont.deriveFont(18f));
+        g.setColor(new Color(230, 230, 230));
+        String subtitle = "The boss has been defeated.";
+        int subX = (gp.vw - g.getFontMetrics().stringWidth(subtitle)) / 2;
+        g.drawString(subtitle, subX, titleY + 32);
+
+        g.setFont(FontCustom.MainFont.deriveFont(18f));
+        for (int i = 0; i < VICTORY_OPTIONS.length; i++) {
+            boolean selected = i == victoryMenuIndex;
+            g.setColor(selected ? Color.WHITE : new Color(200, 200, 200));
+            String option = VICTORY_OPTIONS[i];
+            int optWidth = g.getFontMetrics().stringWidth(option);
+            int optX = (gp.vw - optWidth) / 2;
+            int optY = titleY + 80 + i * 34;
+            g.drawString(option, optX, optY);
         }
     }
 
@@ -646,18 +759,22 @@ public class BattleScreen {
             gp.playSfx("menu_move");
         }
         if (input.consumeIfPressed("ENTER")) {
+            gp.playSfx("menu_select");
             switch (defeatMenuIndex) {
                 case 0 -> {
                     if (gp.loadMostRecentSave()) {
                         defeatScreenActive = false;
+                        bossBattleActive = false;
                         gp.ensureAmbientMusicPlaying();
                     } else {
+                        lastAction = "No recent save to load.";
                         gp.playSfx("menu_cancel");
                     }
                 }
                 case 1 -> {
                     gp.returnToTitleFromBattle();
                     defeatScreenActive = false;
+                    bossBattleActive = false;
                 }
             }
         } else if (input.consumeIfPressed("ESC")) {
@@ -745,7 +862,13 @@ public class BattleScreen {
             return null;
         }
         String pathStr = "resources/sprites/" + nameKey + "_back.png";
-        Sprite sprite = loadSprite(pathStr, 84, 84);
+        Sprite sprite;
+        if(nameKey.equals("boss")){
+            sprite = loadSprite(pathStr, 102, 102);
+            System.out.println("boss");
+        }else{
+            sprite = loadSprite(pathStr, 84, 84);
+        }
         return sprite != null ? sprite : createPlaceholderSprite(64, 64, Color.MAGENTA);
     }
 
@@ -768,6 +891,33 @@ public class BattleScreen {
         return candidate != null && candidate.getStats().getCurrentHp() > 0 ? candidate : null;
     }
 
+    private java.util.List<String> wrapText(String text, FontMetrics fm, int maxWidth) {
+        java.util.List<String> lines = new ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return lines;
+        }
+        String[] words = text.split("\s+");
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            if (current.length() == 0) {
+                current.append(word);
+                continue;
+            }
+            String candidate = current + " " + word;
+            if (fm.stringWidth(candidate) <= maxWidth) {
+                current.append(" ").append(word);
+            } else {
+                lines.add(current.toString());
+                current.setLength(0);
+                current.append(word);
+            }
+        }
+        if (current.length() > 0) {
+            lines.add(current.toString());
+        }
+        return lines;
+    }
+
     private Sprite createPlaceholderSprite(int width, int height, Color bodyColor) {
         BufferedImage placeholder = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = placeholder.createGraphics();
@@ -779,6 +929,5 @@ public class BattleScreen {
         return Sprite.forStaticImage(placeholder);
     }
 }
-
 
 

@@ -37,7 +37,7 @@ public final class EnemyPartyGenerator {
         List<Enemy> res = new ArrayList<>();
         res.add(EnemyScaler.atLevel(bossTpl, bossLevel));
         for (int i=0;i<minions;i++){
-            Enemy mTpl = EnemyRegistry.template("boss_moodeng");
+            Enemy mTpl = EnemyRegistry.template("moodeng");
             if (mTpl!=null) res.add(EnemyScaler.atLevel(mTpl, Math.max(1, bossLevel-1)));
         }
         return res;

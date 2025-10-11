@@ -30,6 +30,13 @@ public final class EnemyRegistry {
         IcedMoodeng.stats.setBaseValue(Stats.StatType.STRENGTH, 12);
         IcedMoodeng.stats.setBaseValue(Stats.StatType.DEFENSE, 4);
 
-        register(moodeng); register(MoodengVegan); register(IcedMoodeng);
+        Enemy boss = new Enemy();
+        boss.name="Boss";
+        boss.id="boss";
+        boss.stats.setBaseValue(Stats.StatType.MAX_HP, 40);
+        boss.stats.setBaseValue(Stats.StatType.STRENGTH, 20);
+        boss.stats.setBaseValue(Stats.StatType.DEFENSE, 4);
+
+        register(moodeng); register(MoodengVegan); register(IcedMoodeng); register(boss);
     }
 }

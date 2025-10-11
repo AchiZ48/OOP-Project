@@ -49,6 +49,7 @@ public class GamePanel extends JPanel {
     private int gold = 50;
     private int essence = 0;
     private int bossKeys = 0;
+    private boolean gameCompleted = false;
     private static final String[] PAUSE_OPTIONS = { "Resume", "Save", "Main Menu", "Quit" };
     private int pauseSelection = 0;
     private String lastSaveName = null;
@@ -206,6 +207,7 @@ public class GamePanel extends JPanel {
     }
 
     public void startNewGame(String saveName) {
+        gameCompleted = false;
         createDefaultParty();
         state = State.WORLD;
         camera.followEntity(party.get(activeIndex));
@@ -266,8 +268,10 @@ public class GamePanel extends JPanel {
             switchToCharacter(2);
         }
         // Battle trigger
-        if(input.consumeIfPressed("B")){
-            if (state == State.WORLD) enterBattle();
+        if (input.consumeIfPressed("B")) {
+            if (state == State.WORLD) {
+                enterBattle();
+            }
         }
         // Main menu navigation
         if (state == State.TITLE) {
@@ -788,7 +792,7 @@ public class GamePanel extends JPanel {
         spendBossKeys();
         queueWorldMessage("Boss gate unlocked!");
         queueWorldMessage("Remaining keys: " + bossKeys + "/" + BOSS_KEYS_REQUIRED + ".");
-        startBattle(false);
+        startBossBattle("boss", (int) Math.max(5, getAveragePartyLevel() + 2), 0, false);
     }
 
     private final EnemyPartyGenerator enemyPartyGen = new EnemyPartyGenerator();
@@ -830,6 +834,7 @@ public class GamePanel extends JPanel {
         statsMenu.close(true);
         skillMenu.close(true);
         dialogManager.clear();
+        battleScreen.setBossBattle(false);
         int apl = avgPartyLevel();
         List<Enemy> foes = enemyPartyGen.rollRandomParty(apl, zoneId);
         if (foes.isEmpty()) return;
@@ -846,6 +851,7 @@ public class GamePanel extends JPanel {
         statsMenu.close(true);
         skillMenu.close(true);
         dialogManager.clear();// ensure templates
+        battleScreen.setBossBattle(true);
         java.util.List<Enemy> foes = enemyPartyGen.makeBossParty(bossId, bossLevel, minions);
         if (foes.isEmpty()) return;
         battleScreen.startBattle(new java.util.ArrayList<>(party), foes, ambush);
@@ -882,6 +888,15 @@ public class GamePanel extends JPanel {
         playAmbientTrack(currentAmbientTrack);
         state = State.TITLE;
         requestFocusInWindow();
+    }
+
+    void endGameAfterBossVictory() {
+        gameCompleted = true;
+        returnToTitleFromBattle();
+    }
+
+    boolean isGameCompleted() {
+        return gameCompleted;
     }
 
 
@@ -928,6 +943,7 @@ public class GamePanel extends JPanel {
             SaveData sd = (SaveData) ois.readObject();
             applySaveData(sd);
             lastSaveName = name;
+            gameCompleted = false;
             state = State.WORLD;
             System.out.println("Game loaded: " + name);
             return true;

@@ -37,6 +37,11 @@ class TitleScreen {
         g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 32));
         drawCenteredString(g, "Solstice Warriors", gp.vw / 2, gp.vh - 48);
 
+        if (gp != null && gp.isGameCompleted()) {
+            g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 26));
+            drawCenteredString(g, "The boss has been defeated. Thanks for playing!", gp.vw / 2, gp.vh - 120);
+        }
+
         // Subtitle
         g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 16));
         drawCenteredString(g, "Press ENTER to Start", gp.vw / 2, gp.vh - 80);
