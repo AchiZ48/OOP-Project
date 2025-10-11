@@ -32,4 +32,8 @@ class QuestManager {
     Collection<Quest> getQuests() {
         return Collections.unmodifiableCollection(quests.values());
     }
+
+    void clear() {
+        quests.clear();
+    }
 }

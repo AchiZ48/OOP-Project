@@ -41,6 +41,10 @@ class FastTravelPoint extends WorldObject {
         return travelCost;
     }
 
+    int getUnlockCost() {
+        return unlockCost;
+    }
+
     void setUnlocked(boolean unlocked) {
         this.unlocked = unlocked;
         if (unlocked) {

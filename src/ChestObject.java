@@ -12,6 +12,18 @@ class ChestObject extends WorldObject {
         setInteractionPriority(3);
     }
 
+    int getBaseGold() {
+        return baseGold;
+    }
+
+    int getBaseEssence() {
+        return baseEssence;
+    }
+
+    boolean grantsBossKey() {
+        return grantsBossKey;
+    }
+
     @Override
     protected void onInteract(InteractionContext context) {
         if (isFlagSet(StateFlag.LOCKED)) {

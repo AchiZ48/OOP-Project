@@ -33,10 +33,16 @@ class SaveMenuScreen {
         }
         saves.sort(String::compareToIgnoreCase);
 
-        // Ensure selected index is valid
-        int maxOptions = Math.max(3, 2 + saves.size());
-        if (selected >= maxOptions) selected = maxOptions - 1;
-        if (selected < 0) selected = 0;
+        int totalOptions = saves.size() + 2;
+        if (totalOptions <= 0) {
+            totalOptions = 2;
+        }
+        if (selected >= totalOptions) {
+            selected = totalOptions - 1;
+        }
+        if (selected < 0) {
+            selected = 0;
+        }
     }
 
     void update(double dt) {
@@ -46,7 +52,29 @@ class SaveMenuScreen {
         if (input.consumeIfPressed("UP")) selected = (selected - 1 + totalOptions) % totalOptions;
         if (input.consumeIfPressed("DOWN")) selected = (selected + 1) % totalOptions;
         if (input.consumeIfPressed("ENTER")) handleSelection();
-        if (input.consumeIfPressed("ESC")) gp.state = GamePanel.State.TITLE;
+        if (input.consumeIfPressed("ESC")) {
+            gp.state = GamePanel.State.TITLE;
+            return;
+        }
+        if (input.consumeIfPressed("N")) {
+            selected = 0;
+            handleSelection();
+            return;
+        }
+        if (input.consumeIfPressed("L")) {
+            if (!saves.isEmpty()) {
+                if (selected == 0 || selected > saves.size()) {
+                    selected = 1;
+                }
+                handleSelection();
+            }
+            return;
+        }
+        if (input.consumeIfPressed("DELETE")) {
+            if (selected > 0 && selected <= saves.size()) {
+                confirmDeleteSave(saves.get(selected - 1));
+            }
+        }
     }
 
     void handleSelection() {
@@ -74,7 +102,7 @@ class SaveMenuScreen {
 
         String saveName = (result[0] != null) ? result[0].trim() : null;
         gp.startNewGame(saveName != null && !saveName.isEmpty() ? saveName : null);
-        gp.state = GamePanel.State.WORLD;  // <-- ปิด save menu ทันที
+        gp.state = GamePanel.State.WORLD;
         gp.requestFocusInWindow();
     }
 
@@ -103,7 +131,7 @@ class SaveMenuScreen {
 
         g.setFont(new Font("Monospaced", Font.PLAIN, 14));
         g.setColor(Color.LIGHT_GRAY);
-        g.drawString("N: New | L: Load | D: Delete | Esc: Back | Enter: Select", 24, 72);
+        g.drawString("Arrows: Move | Enter: Select | N: New | L: Load | Del: Delete | Esc: Back", 24, 72);
 
         int x = 24, y0 = 110, rowH = 24;
 
@@ -122,12 +150,12 @@ class SaveMenuScreen {
                 g.setColor(selected == optionIndex ? Color.YELLOW : Color.WHITE);
                 g.drawString((selected == optionIndex ? "> " : "  ") + name, x, y);
             } else {
-                g.setColor(selected == optionIndex ? new Color(100, 100, 0) : Color.GRAY);
-                g.drawString((selected == optionIndex ? "> " : "  ") + "<empty>", x, y);
+                g.setColor(Color.GRAY);
+                g.drawString("  <empty>", x, y);
             }
         }
 
-        int backIndex = 1 + maxVisible;
+        int backIndex = saves.size() + 1;
         int backY = y0 + (maxVisible + 1) * rowH;
         g.setFont(new Font("Monospaced", Font.BOLD, 16));
         g.setColor(selected == backIndex ? Color.YELLOW : Color.WHITE);
@@ -138,4 +166,3 @@ class SaveMenuScreen {
         g.drawString("Saves found: " + saves.size(), gp.vw - 150, gp.vh - 20);
     }
 }
-

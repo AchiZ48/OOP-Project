@@ -101,4 +101,21 @@ class PlayerSkills implements Serializable {
     Map<Stats.StatType, Integer> statSnapshot() {
         return Collections.unmodifiableMap(statUpgrades);
     }
+
+    PlayerSkills copy() {
+        PlayerSkills clone = new PlayerSkills();
+        clone.levels.putAll(this.levels);
+        clone.statUpgrades.putAll(this.statUpgrades);
+        return clone;
+    }
+
+    void copyFrom(PlayerSkills other) {
+        if (other == null) {
+            return;
+        }
+        levels.clear();
+        levels.putAll(other.levels);
+        statUpgrades.clear();
+        statUpgrades.putAll(other.statUpgrades);
+    }
 }

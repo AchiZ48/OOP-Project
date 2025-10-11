@@ -86,4 +86,31 @@ class PlacementManager {
         String id = "placed_" + current.name().toLowerCase() + "_" + sequence;
         return recipe.factory.create(id, player, sequence);
     }
+
+    EnumMap<PlacementType, Integer> snapshotCounters() {
+        EnumMap<PlacementType, Integer> copy = new EnumMap<>(PlacementType.class);
+        copy.putAll(counters);
+        return copy;
+    }
+
+    void restoreCounters(Map<PlacementType, Integer> snapshot) {
+        counters.clear();
+        if (snapshot != null) {
+            for (PlacementType type : PlacementType.values()) {
+                Integer value = snapshot.get(type);
+                if (value != null) {
+                    counters.put(type, Math.max(0, value));
+                }
+            }
+        }
+        for (PlacementType type : PlacementType.values()) {
+            counters.putIfAbsent(type, 0);
+        }
+    }
+
+    void setCurrent(PlacementType type) {
+        if (type != null) {
+            current = type;
+        }
+    }
 }

@@ -8,6 +8,10 @@ class SkillTrainerObject extends WorldObject {
         setInteractionPriority(4);
     }
 
+    String getStationName() {
+        return skillStationName;
+    }
+
     @Override
     protected void onInteract(InteractionContext context) {
         if (context == null) {

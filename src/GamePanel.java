@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.List;
@@ -19,7 +20,6 @@ import java.util.function.Consumer;
 public class GamePanel extends JPanel {
     final int vw, vh;
     BufferedImage worldBackBuffer;
-    BufferedImage HUDBackBuffer;
     TileMap map;
     Camera camera;
     List<Player> party;
@@ -49,6 +49,9 @@ public class GamePanel extends JPanel {
     private int gold = 50;
     private int essence = 0;
     private int bossKeys = 0;
+    private static final String[] PAUSE_OPTIONS = { "Resume", "Save", "Main Menu", "Quit" };
+    private int pauseSelection = 0;
+    private String lastSaveName = null;
     int activeIndex = 0;
     boolean debugMode = false;
     boolean showPauseOverlay = false;
@@ -72,7 +75,6 @@ public class GamePanel extends JPanel {
         setFocusable(true);
         FontCustom.loadFonts();
         worldBackBuffer = new BufferedImage(vw, vh, BufferedImage.TYPE_INT_ARGB);
-        HUDBackBuffer = new BufferedImage(vw, vh, BufferedImage.TYPE_INT_ARGB);
         input = new InputManager(this);
 
         // Load tilemap with better error handling
@@ -195,7 +197,9 @@ public class GamePanel extends JPanel {
         state = State.WORLD;
         camera.followEntity(party.get(activeIndex));
         if (saveName != null && !saveName.trim().isEmpty()) {
-            saveGame(saveName.trim());
+            String trimmed = saveName.trim();
+            saveGame(trimmed);
+            lastSaveName = trimmed;
         }
         System.out.println("New game started" + (saveName != null ? " and saved as: " + saveName : ""));
     }
@@ -205,6 +209,11 @@ public class GamePanel extends JPanel {
 
         if (skillMenu.isOpen()) {
             skillMenu.update();
+            return;
+        }
+
+        if (showPauseOverlay) {
+            handlePauseMenuInput();
             return;
         }
 
@@ -254,18 +263,18 @@ public class GamePanel extends JPanel {
                 saveMenu.refresh();
                 return;
             }
-        } else if (state == State.SAVE_MENU) {
-            if (input.consumeIfPressed("ENTER")) {
-                state = State.WORLD;
-                return;
-            }
         }
         // Quick escape behaviour
         if (state != State.BATTLE && input.consumeIfPressed("ESC")){
             switch (state) {
                 case WORLD:
-                    showPauseOverlay = !showPauseOverlay;
-                    System.out.println(showPauseOverlay);
+                    if (showPauseOverlay) {
+                        closePauseMenu();
+                        playSfx("menu_cancel");
+                    } else {
+                        openPauseMenu();
+                        playSfx("menu_open");
+                    }
                     break;
                 case SAVE_MENU:
                     state = State.TITLE;
@@ -772,7 +781,7 @@ public class GamePanel extends JPanel {
     private void startBattle(boolean ambush) {
         createDefaultEnemies();
         if (party != null && !party.isEmpty() && enemies != null) {
-            showPauseOverlay = false;
+            closePauseMenu();
             closeFastTravelMenu();
             statsMenu.close(true);
             skillMenu.close(true);
@@ -797,7 +806,7 @@ public class GamePanel extends JPanel {
 
     public void startRandomEncounter(boolean ambush, int zoneId){
         if (party == null || party.isEmpty()) return;
-        showPauseOverlay = false;
+        closePauseMenu();
         closeFastTravelMenu();
         statsMenu.close(true);
         skillMenu.close(true);
@@ -813,7 +822,7 @@ public class GamePanel extends JPanel {
 
     public void startBossBattle(String bossId, int bossLevel, int minions, boolean ambush){
         if (party == null || party.isEmpty()) return;
-        showPauseOverlay = false;
+        closePauseMenu();
         closeFastTravelMenu();
         statsMenu.close(true);
         skillMenu.close(true);
@@ -827,7 +836,7 @@ public class GamePanel extends JPanel {
     }
 
     void returnToWorld() {
-        showPauseOverlay = false;
+        closePauseMenu();
         closeFastTravelMenu();
         statsMenu.close(true);
         skillMenu.close(true);
@@ -844,14 +853,19 @@ public class GamePanel extends JPanel {
     }
 
     void saveGame(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            System.err.println("Save failed: missing save name");
+            return;
+        }
         try {
             Files.createDirectories(Paths.get("saves"));
+            SaveData sd = SaveData.capture(this);
             try (ObjectOutputStream oos = new ObjectOutputStream(
                     new FileOutputStream("saves/" + name + ".sav"))) {
-                SaveData sd = SaveData.fromParty(party);
                 oos.writeObject(sd);
-                System.out.println("Game saved: saves/" + name + ".sav");
             }
+            lastSaveName = name;
+            System.out.println("Game saved: saves/" + name + ".sav");
         } catch (Exception e) {
             System.err.println("Save failed: " + e.getMessage());
             e.printStackTrace();
@@ -862,21 +876,131 @@ public class GamePanel extends JPanel {
         try (ObjectInputStream ois = new ObjectInputStream(
                 new FileInputStream("saves/" + name + ".sav"))) {
             SaveData sd = (SaveData) ois.readObject();
-            party = sd.toParty();
-            activeIndex = 0;
-            if (!party.isEmpty()) {
-                camera.followEntity(party.get(activeIndex));
-            }
-            statsMenu.reset();
-        skillMenu.reset();
-            lastAmbientZoneId = -1;
-            updateAmbientTrack(party.isEmpty() ? null : party.get(activeIndex));
+            applySaveData(sd);
+            lastSaveName = name;
             state = State.WORLD;
             System.out.println("Game loaded: " + name);
             return true;
         } catch (Exception e) {
             System.err.println("Load failed for " + name + ": " + e.getMessage());
+            e.printStackTrace();
             return false;
+        }
+    }
+
+    private void applySaveData(SaveData data) {
+        if (data == null) {
+            return;
+        }
+
+        List<Player> rebuiltParty = new ArrayList<>();
+        if (data.players != null) {
+            for (SaveData.PlayerData pd : data.players) {
+                if (pd == null || pd.name == null || pd.name.isEmpty()) {
+                    continue;
+                }
+                Player player = Player.createSample(pd.name, pd.x, pd.y);
+                if (pd.stats != null) {
+                    player.applyStats(pd.stats);
+                }
+                if (pd.skills != null) {
+                    player.applySkillProgression(pd.skills);
+                }
+                rebuiltParty.add(player);
+            }
+        }
+        party = rebuiltParty;
+        activeIndex = party.isEmpty() ? 0 : Math.max(0, Math.min(data.activeIndex, party.size() - 1));
+        if (!party.isEmpty() && camera != null) {
+            camera.followEntity(party.get(activeIndex));
+        }
+
+        gold = Math.max(0, data.gold);
+        essence = Math.max(0, data.essence);
+        bossKeys = Math.max(0, data.bossKeys);
+
+        worldMessages.clear();
+        statsMenu.reset();
+        skillMenu.reset();
+        statsMenu.close(true);
+        skillMenu.close(true);
+        dialogManager.clear();
+        fastTravelOptions.clear();
+        fastTravelMenuOpen = false;
+        fastTravelSelectionIndex = 0;
+        fastTravelOrigin = null;
+        closePauseMenu();
+        ambushManager.reset();
+
+        questManager.clear();
+        if (data.quests != null) {
+            for (SaveData.QuestData qd : data.quests) {
+                if (qd == null || qd.id == null || qd.id.isEmpty()) {
+                    continue;
+                }
+                Quest quest = new Quest(
+                        qd.id,
+                        qd.name != null ? qd.name : qd.id,
+                        qd.description != null ? qd.description : "",
+                        Math.max(0, qd.rewardGold));
+                if (qd.status != null) {
+                    quest.setStatus(qd.status);
+                }
+                questManager.registerQuest(quest);
+            }
+        }
+
+        if (worldObjectManager != null) {
+            worldObjectManager.clear();
+            fastTravelNetwork.clear();
+            if (data.worldObjects != null && !data.worldObjects.isEmpty()) {
+                for (SaveData.WorldObjectData wod : data.worldObjects) {
+                    if (wod == null) {
+                        continue;
+                    }
+                    WorldObject object = wod.rebuild();
+                    if (object != null) {
+                        worldObjectManager.add(object);
+                    }
+                }
+            } else {
+                spawnInitialObjects();
+            }
+            PlacementManager placement = worldObjectManager.getPlacementManager();
+            if (placement != null) {
+                EnumMap<PlacementManager.PlacementType, Integer> seeds = new EnumMap<>(PlacementManager.PlacementType.class);
+                if (data.placementCounters != null) {
+                    for (Map.Entry<String, Integer> entry : data.placementCounters.entrySet()) {
+                        if (entry.getKey() == null || entry.getValue() == null) {
+                            continue;
+                        }
+                        try {
+                            PlacementManager.PlacementType type = PlacementManager.PlacementType.valueOf(entry.getKey());
+                            seeds.put(type, Math.max(0, entry.getValue()));
+                        } catch (IllegalArgumentException ignored) {
+                        }
+                    }
+                }
+                placement.restoreCounters(seeds);
+                if (data.placementCurrent != null) {
+                    try {
+                        placement.setCurrent(PlacementManager.PlacementType.valueOf(data.placementCurrent));
+                    } catch (IllegalArgumentException ignored) {
+                    }
+                }
+            }
+        }
+
+        spawnNPCs();
+
+        soundManager.stopChannel(SoundManager.Channel.BATTLE);
+        soundManager.stopChannel(SoundManager.Channel.AMBIENT);
+
+        lastAmbientZoneId = -1;
+        if (!party.isEmpty()) {
+            updateAmbientTrack(party.get(activeIndex));
+        } else {
+            playAmbientTrack(currentAmbientTrack);
         }
     }
 
@@ -1154,38 +1278,28 @@ public class GamePanel extends JPanel {
         gWorld.setColor(new Color(0x2b2b2b));
         gWorld.fillRect(0, 0, worldBackBuffer.getWidth(), worldBackBuffer.getHeight());
 
-        // --- HUD / UI back buffer ---
-        Graphics2D gUI = HUDBackBuffer.createGraphics();
-
-
-        gUI.setComposite(AlphaComposite.Clear);
-        gUI.fillRect(0, 0, HUDBackBuffer.getWidth(), HUDBackBuffer.getHeight());
-        gUI.setComposite(AlphaComposite.SrcOver);
-
         try {
             switch (state) {
                 case TITLE:
-                    titleScreen.draw(gUI);
+                    titleScreen.draw(gWorld);
                     break;
                 case SAVE_MENU:
-                    saveMenu.draw(gUI);
+                    saveMenu.draw(gWorld);
                     break;
                 case WORLD:
-                    drawWorld(gWorld);   // world à¸¥à¸‡ backBuffer
-                    drawHUD(gUI);        // HUD overlay à¸¥à¸‡ HUDBackBuffer
+                    drawWorld(gWorld);
                     break;
                 case BATTLE:
-                    battleScreen.draw(gUI);
+                    battleScreen.draw(gWorld);
                     break;
             }
         } catch (Exception e) {
-            Graphics2D gError = (state == State.WORLD) ? gWorld : gUI;
+            Graphics2D gError = gWorld;
             gError.setColor(Color.RED);
             gError.drawString("Render Error: " + e.getMessage(), 10, 30);
         }
 
 //        gWorld.dispose();
-        gUI.dispose();
 
         // --- Compose final screen ---
         Graphics2D g2 = (Graphics2D) g0;
@@ -1200,13 +1314,16 @@ public class GamePanel extends JPanel {
         g2.setColor(Color.BLACK);
         g2.fillRect(0, 0, pw, ph);
 
-        // Draw WORLD if applicable
-        if (state == State.WORLD) {
-            g2.drawImage(worldBackBuffer, ox, oy, drawW, drawH, null);
-        }
+        // Draw rendered scene
+        g2.drawImage(worldBackBuffer, ox, oy, drawW, drawH, null);
 
-        // Draw UI overlay (HUD for WORLD, UI for TITLE/SAVE/BATTLE)
-        g2.drawImage(HUDBackBuffer, ox, oy, drawW, drawH, null);
+        if (state == State.WORLD) {
+            AffineTransform oldHudTransform = g2.getTransform();
+            g2.translate(ox, oy);
+            g2.scale(scale, scale);
+            drawHUD(g2);
+            g2.setTransform(oldHudTransform);
+        }
 
         // Letterbox
         g2.setColor(new Color(0, 0, 0, 120));
@@ -1236,12 +1353,138 @@ public class GamePanel extends JPanel {
         g.setColor(new Color(40, 40, 40));
         g.fillRoundRect(x, y, menuWidth, menuHeight, 15, 15);
 
-        g.setColor(Color.WHITE);
         g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 14));
 
-        String[] options = { "Resume", "Save", "Main Menu", "Quit" };
-        for (int i = 0; i < options.length; i++) {
-            g.drawString(options[i], x + 30, y + 35 + i * 25);
+        for (int i = 0; i < PAUSE_OPTIONS.length; i++) {
+            boolean selected = i == pauseSelection;
+            g.setColor(selected ? Color.YELLOW : Color.WHITE);
+            g.drawString((selected ? "> " : "  ") + PAUSE_OPTIONS[i], x + 30, y + 35 + i * 25);
+        }
+    }
+
+    private void openPauseMenu() {
+        showPauseOverlay = true;
+        pauseSelection = 0;
+        statsMenu.close(true);
+        skillMenu.close(true);
+        closeFastTravelMenu();
+    }
+
+    private void closePauseMenu() {
+        showPauseOverlay = false;
+        pauseSelection = 0;
+    }
+
+    private void handlePauseMenuInput() {
+        if (input.consumeIfPressed("UP")) {
+            pauseSelection = (pauseSelection - 1 + PAUSE_OPTIONS.length) % PAUSE_OPTIONS.length;
+            playSfx("menu_move");
+            return;
+        }
+        if (input.consumeIfPressed("DOWN")) {
+            pauseSelection = (pauseSelection + 1) % PAUSE_OPTIONS.length;
+            playSfx("menu_move");
+            return;
+        }
+        if (input.consumeIfPressed("ENTER")) {
+            playSfx("menu_select");
+            executePauseSelection();
+            return;
+        }
+        if (input.consumeIfPressed("ESC")) {
+            closePauseMenu();
+            playSfx("menu_cancel");
+        }
+    }
+
+    private void executePauseSelection() {
+        switch (pauseSelection) {
+            case 0 -> {
+                closePauseMenu();
+                playSfx("menu_close");
+            }
+            case 1 -> promptPauseSave();
+            case 2 -> promptReturnToTitle();
+            case 3 -> promptQuitGame();
+            default -> { }
+        }
+    }
+
+    private void promptPauseSave() {
+        final String[] result = new String[1];
+        try {
+            SwingUtilities.invokeAndWait(() -> result[0] = (String) JOptionPane.showInputDialog(
+                    this,
+                    "Enter save name:",
+                    "Save Game",
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    null,
+                    lastSaveName != null ? lastSaveName : ""));
+        } catch (Exception e) {
+            result[0] = null;
+        }
+
+        if (result[0] == null) {
+            requestFocusInWindow();
+            return;
+        }
+
+        String chosen = result[0].trim();
+        if (chosen.isEmpty()) {
+            queueWorldMessage("Save cancelled.");
+            requestFocusInWindow();
+            return;
+        }
+
+        saveGame(chosen);
+        lastSaveName = chosen;
+        queueWorldMessage("Game saved to '" + chosen + "'.");
+        requestFocusInWindow();
+    }
+
+    private void promptReturnToTitle() {
+        final int[] response = new int[1];
+        try {
+            SwingUtilities.invokeAndWait(() -> response[0] = JOptionPane.showConfirmDialog(
+                    this,
+                    "Return to the title screen? Unsaved progress will be lost.",
+                    "Return to Title",
+                    JOptionPane.YES_NO_OPTION));
+        } catch (Exception e) {
+            response[0] = JOptionPane.NO_OPTION;
+        }
+
+        if (response[0] == JOptionPane.YES_OPTION) {
+            closePauseMenu();
+            dialogManager.clear();
+            statsMenu.close(true);
+            skillMenu.close(true);
+            closeFastTravelMenu();
+            ambushManager.reset();
+            soundManager.stopChannel(SoundManager.Channel.BATTLE);
+            playAmbientTrack(currentAmbientTrack);
+            state = State.TITLE;
+        }
+        requestFocusInWindow();
+    }
+
+    private void promptQuitGame() {
+        final int[] response = new int[1];
+        try {
+            SwingUtilities.invokeAndWait(() -> response[0] = JOptionPane.showConfirmDialog(
+                    this,
+                    "Quit the game? Unsaved progress will be lost.",
+                    "Quit Game",
+                    JOptionPane.YES_NO_OPTION));
+        } catch (Exception e) {
+            response[0] = JOptionPane.NO_OPTION;
+        }
+
+        if (response[0] == JOptionPane.YES_OPTION) {
+            System.exit(0);
+        } else {
+            requestFocusInWindow();
         }
     }
 
@@ -1321,6 +1564,7 @@ public class GamePanel extends JPanel {
     }
 
     void   drawHUD(Graphics2D g) {
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         hudRenderer.draw(g, highlightedInteractable, dialogManager.isActive(), fastTravelMenuOpen);
         if (skillMenu.isOpen()) {
             skillMenu.draw(g);
@@ -1562,6 +1806,8 @@ public class GamePanel extends JPanel {
         }
     }
 }
+
+
 
 
 

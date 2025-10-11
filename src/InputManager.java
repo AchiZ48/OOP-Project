@@ -71,6 +71,9 @@ public class InputManager {
         registerKey(KeyEvent.VK_Q, "Q");
         registerKey(KeyEvent.VK_R, "R");
         registerKey(KeyEvent.VK_MULTIPLY, "*");
+        registerKey(KeyEvent.VK_N, "N");
+        registerKey(KeyEvent.VK_L, "L");
+        registerKey(KeyEvent.VK_DELETE, "DELETE");
     }
 
     void registerKey(int keyStroke, String name) {

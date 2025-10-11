@@ -60,6 +60,13 @@ class Player extends Entity {
         stats.copyFrom(newStats);
     }
 
+    void applySkillProgression(PlayerSkills savedProgression) {
+        if (savedProgression == null) {
+            return;
+        }
+        skillProgression.copyFrom(savedProgression);
+    }
+
     static Player createSample(String name, double x, double y) {
         Sprite spr;
         try {
