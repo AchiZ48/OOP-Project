@@ -6,25 +6,10 @@ import java.util.Locale;
 class Player extends Entity {
     @Serial
     private static final long serialVersionUID = 1L;
-    private final PlayerSkills skillProgression = new PlayerSkills();
-
-    enum Direction {
-        DOWN(0),
-        LEFT(1),
-        RIGHT(2),
-        UP(3);
-
-        final int rowIndex;
-
-        Direction(int rowIndex) {
-            this.rowIndex = rowIndex;
-        }
-    }
-
-    private Direction facing = Direction.DOWN;
     private static final double COLLIDER_INSET = 6.0;
     private static final double FOOT_HEIGHT = 0;
-
+    private final PlayerSkills skillProgression = new PlayerSkills();
+    private Direction facing = Direction.DOWN;
     public Player(String name, Sprite spr, double x, double y) {
         this.name = name;
         this.sprite = spr;
@@ -36,42 +21,11 @@ class Player extends Entity {
         applyFacingToSprite();
     }
 
-    Stats getStats() {
-        return stats;
-    }
-
-    PlayerSkills getSkillProgression() {
-        return skillProgression;
-    }
-
-    void initializeDefaultSkills() {
-        skillProgression.ensureSkill("strike", 1);
-        skillProgression.ensureSkill("power_attack", 1);
-        skillProgression.ensureSkill("guard", 1);
-        for (StatUpgradeDefinition def : StatUpgradeCatalog.all()) {
-            skillProgression.ensureStatEntry(def.getStatType());
-        }
-    }
-
-    void applyStats(Stats newStats) {
-        if (newStats == null) {
-            return;
-        }
-        stats.copyFrom(newStats);
-    }
-
-    void applySkillProgression(PlayerSkills savedProgression) {
-        if (savedProgression == null) {
-            return;
-        }
-        skillProgression.copyFrom(savedProgression);
-    }
-
     static Player createSample(String name, double x, double y) {
         Sprite spr;
         try {
             BufferedImage img = ResourceLoader.loadImage("resources/sprites/" + name.toLowerCase() + ".png");
-            spr = Sprite.fromSheet(img, 64, 96, img.getWidth()/64, 4, img.getWidth()/64);
+            spr = Sprite.fromSheet(img, 64, 96, img.getWidth() / 64, 4, img.getWidth() / 64);
             System.out.println("Loaded sprite for " + name);
         } catch (Exception e) {
             BufferedImage bi = new BufferedImage(16, 32, BufferedImage.TYPE_INT_ARGB);
@@ -109,6 +63,37 @@ class Player extends Entity {
         stats.fullHeal();
         stats.fullRestoreBattlePoints();
         return player;
+    }
+
+    Stats getStats() {
+        return stats;
+    }
+
+    PlayerSkills getSkillProgression() {
+        return skillProgression;
+    }
+
+    void initializeDefaultSkills() {
+        skillProgression.ensureSkill("strike", 1);
+        skillProgression.ensureSkill("power_attack", 1);
+        skillProgression.ensureSkill("guard", 1);
+        for (StatUpgradeDefinition def : StatUpgradeCatalog.all()) {
+            skillProgression.ensureStatEntry(def.getStatType());
+        }
+    }
+
+    void applyStats(Stats newStats) {
+        if (newStats == null) {
+            return;
+        }
+        stats.copyFrom(newStats);
+    }
+
+    void applySkillProgression(PlayerSkills savedProgression) {
+        if (savedProgression == null) {
+            return;
+        }
+        skillProgression.copyFrom(savedProgression);
     }
 
     public void updateWithInput(InputManager input, TileMap map, double dt) {
@@ -296,13 +281,12 @@ class Player extends Entity {
         }
 
         if (midTop < footTop) {
-            if (map.isSolidAtPixel(left, midTop) || map.isSolidAtPixel(right, midTop)) {
-                return false;
-            }
+            return !map.isSolidAtPixel(left, midTop) && !map.isSolidAtPixel(right, midTop);
         }
 
         return true;
     }
+
     @Override
     void update(double dt) {
         if (sprite != null) {
@@ -316,6 +300,19 @@ class Player extends Entity {
 
     public double getY() {
         return getPreciseY();
+    }
+
+    enum Direction {
+        DOWN(0),
+        LEFT(1),
+        RIGHT(2),
+        UP(3);
+
+        final int rowIndex;
+
+        Direction(int rowIndex) {
+            this.rowIndex = rowIndex;
+        }
     }
 }
 

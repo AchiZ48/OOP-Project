@@ -3,14 +3,13 @@ import java.awt.image.BufferedImage;
 import java.util.Locale;
 
 public class Enemy extends Entity {
+    private static final long serialVersionUID = 1L;
+    private static final int DEFAULT_SCALE = 3;
     // --- added for dynamic encounters (non-breaking) ---
     public String id;
 
-    private static final long serialVersionUID = 1L;
-    private static final int DEFAULT_SCALE = 3;
 
-
-    public Enemy(){
+    public Enemy() {
         this.stats = Stats.createDefault();
     }
 
@@ -18,6 +17,7 @@ public class Enemy extends Entity {
         this.name = name;
         this.stats = Stats.createDefault();
     }
+
     public Enemy(String name, double x, double y) {
         this.x = x;
         this.y = y;
@@ -25,16 +25,11 @@ public class Enemy extends Entity {
         this.stats = Stats.createDefault();
     }
 
-
-    Stats getStats() {
-        return stats;
-    }
-
     static Enemy createSample(String name) {
         Sprite spr;
         try {
             BufferedImage img = ResourceLoader.loadImage("resources/sprites/" + name.toLowerCase() + ".png");
-            spr = Sprite.fromSheet(img, 64, 96, img.getWidth()/64, 4, img.getWidth()/64);
+            spr = Sprite.fromSheet(img, 64, 96, img.getWidth() / 64, 4, img.getWidth() / 64);
             System.out.println("Loaded sprite for " + name);
         } catch (Exception e) {
             BufferedImage bi = new BufferedImage(16, 32, BufferedImage.TYPE_INT_ARGB);
@@ -70,7 +65,9 @@ public class Enemy extends Entity {
         return enemy;
     }
 
-
+    Stats getStats() {
+        return stats;
+    }
 
     @Override
     void update(double dt) {

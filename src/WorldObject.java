@@ -1,30 +1,18 @@
-
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
+import java.awt.*;
 import java.io.Serializable;
 import java.util.EnumMap;
 
 abstract class WorldObject implements Interactable, Serializable {
-    enum StateFlag {
-        LOCKED,
-        OPEN,
-        BROKEN,
-        USABLE,
-        CONSUMED
-    }
-
     final String id;
     final String type;
+    private final EnumMap<StateFlag, Boolean> flags = new EnumMap<>(StateFlag.class);
     double x;
     double y;
     int width;
     int height;
     transient Sprite sprite;
-    private final EnumMap<StateFlag, Boolean> flags = new EnumMap<>(StateFlag.class);
     private int interactionPriority = 1;
     private String prompt = "Interact";
-
     WorldObject(String id, String type, double x, double y, int width, int height, Sprite sprite) {
         this.id = id;
         this.type = type;
@@ -62,10 +50,6 @@ abstract class WorldObject implements Interactable, Serializable {
 
     void setPrompt(String prompt) {
         this.prompt = prompt != null ? prompt : "Interact";
-    }
-
-    void setInteractionPriority(int priority) {
-        this.interactionPriority = priority;
     }
 
     void setSprite(Sprite sprite) {
@@ -134,6 +118,10 @@ abstract class WorldObject implements Interactable, Serializable {
         return interactionPriority;
     }
 
+    void setInteractionPriority(int priority) {
+        this.interactionPriority = priority;
+    }
+
     @Override
     public void interact(InteractionContext context) {
         if (!isActive()) {
@@ -167,6 +155,14 @@ abstract class WorldObject implements Interactable, Serializable {
     private void drawInactive(Graphics2D g) {
         g.setColor(new Color(64, 64, 64, 180));
         g.fillRect((int) Math.round(x), (int) Math.round(y), width, height);
+    }
+
+    enum StateFlag {
+        LOCKED,
+        OPEN,
+        BROKEN,
+        USABLE,
+        CONSUMED
     }
 }
 

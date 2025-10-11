@@ -6,10 +6,10 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 public class GameWindow {
-    JFrame frame;
-    GamePanel panel;
     final int virtualWidth = 640;
     final int virtualHeight = 360;
+    JFrame frame;
+    GamePanel panel;
 
     public GameWindow() {
         frame = new JFrame("Turn-based Sprite Game (Fixed & Enhanced)");

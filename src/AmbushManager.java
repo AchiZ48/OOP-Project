@@ -72,7 +72,7 @@ class AmbushManager {
         };
     }
 
-    public double getCooldown(){
+    public double getCooldown() {
         return cooldown;
     }
 }

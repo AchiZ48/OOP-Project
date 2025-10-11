@@ -4,21 +4,9 @@ import java.util.Map;
 
 public class Stats implements Serializable {
     private static final long serialVersionUID = 1L;
-
-    enum StatType {
-        MAX_HP,
-        STRENGTH,
-        DEFENSE,
-        ARCANE,
-        SPEED,
-        LUCK,
-        AWARENESS
-    }
-
     private final EnumMap<StatType, Integer> baseValues = new EnumMap<>(StatType.class);
     private final EnumMap<StatType, Integer> equipmentBonus = new EnumMap<>(StatType.class);
     private final EnumMap<StatType, Integer> temporaryBonus = new EnumMap<>(StatType.class);
-
     private int level = 1;
     private int exp = 0;
     private int currentHp = 1;
@@ -281,6 +269,16 @@ public class Stats implements Serializable {
 
     private int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    enum StatType {
+        MAX_HP,
+        STRENGTH,
+        DEFENSE,
+        ARCANE,
+        SPEED,
+        LUCK,
+        AWARENESS
     }
 }
 

@@ -1,5 +1,4 @@
-import java.awt.Color;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
@@ -15,7 +14,7 @@ final class WorldObjectFactory {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        spr = Sprite.fromSheet(img, 32, 32, img.getWidth()/32, 1, img.getWidth()/32);
+        spr = Sprite.fromSheet(img, 32, 32, img.getWidth() / 32, 1, img.getWidth() / 32);
         System.out.println("Loaded sprite for chest");
         return new ChestObject(id, x, y, 32, 32, spr, baseGold, baseEssence, grantsBossKey);
     }
@@ -44,7 +43,7 @@ final class WorldObjectFactory {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        spr = Sprite.fromSheet(img, 64, 96, img.getWidth()/64, 1, img.getWidth()/64);
+        spr = Sprite.fromSheet(img, 64, 96, img.getWidth() / 64, 1, img.getWidth() / 64);
         System.out.println("Loaded sprite for trainer");
         return new SkillTrainerObject(id, x, y, 32, 64, spr, displayName);
     }

@@ -1,21 +1,10 @@
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.FloatControl;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.sound.sampled.*;
 import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
 class SoundManager {
-    enum Channel {
-        AMBIENT,
-        BATTLE,
-        UI
-    }
-
     private final Map<String, Clip> clipCache = new HashMap<>();
     private Clip ambientClip;
     private Clip battleClip;
@@ -150,5 +139,11 @@ class SoundManager {
             return AudioSystem.getAudioInputStream(url);
         }
         return AudioSystem.getAudioInputStream(new java.io.File(resourcePath));
+    }
+
+    enum Channel {
+        AMBIENT,
+        BATTLE,
+        UI
     }
 }

@@ -61,17 +61,17 @@ public class Tileset {
 
         for (int y = 0; y < h; y += th) {
             for (int x = 0; x < w; x += tw) {
-                Color baseColor = ((x/tw + y/th) & 1) == 0 ? Color.LIGHT_GRAY : Color.GRAY;
+                Color baseColor = ((x / tw + y / th) & 1) == 0 ? Color.LIGHT_GRAY : Color.GRAY;
                 g.setColor(baseColor);
                 g.fillRect(x, y, tw, th);
                 g.setColor(Color.DARK_GRAY);
-                g.drawRect(x, y, tw-1, th-1);
+                g.drawRect(x, y, tw - 1, th - 1);
 
                 // Add tile number for debugging
                 g.setColor(Color.BLACK);
                 g.setFont(new Font("Monospaced", Font.PLAIN, 8));
-                int tileNum = (y/th) * (w/tw) + (x/tw);
-                g.drawString(String.valueOf(tileNum), x+2, y+10);
+                int tileNum = (y / th) * (w / tw) + (x / tw);
+                g.drawString(String.valueOf(tileNum), x + 2, y + 10);
             }
         }
         g.dispose();
@@ -79,32 +79,32 @@ public class Tileset {
     }
 
     public static Tileset generatePlaceholder(int tw, int th) {
-        BufferedImage bi = new BufferedImage(tw*2, th*2, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage bi = new BufferedImage(tw * 2, th * 2, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = bi.createGraphics();
 
         // Tile 0 (index 0) - light gray
         g.setColor(Color.LIGHT_GRAY);
         g.fillRect(0, 0, tw, th);
         g.setColor(Color.BLACK);
-        g.drawRect(0, 0, tw-1, th-1);
+        g.drawRect(0, 0, tw - 1, th - 1);
 
         // Tile 1 (index 1) - gray
         g.setColor(Color.GRAY);
         g.fillRect(tw, 0, tw, th);
         g.setColor(Color.BLACK);
-        g.drawRect(tw, 0, tw-1, th-1);
+        g.drawRect(tw, 0, tw - 1, th - 1);
 
         // Tile 2 (index 2) - dark gray
         g.setColor(Color.DARK_GRAY);
         g.fillRect(0, th, tw, th);
         g.setColor(Color.BLACK);
-        g.drawRect(0, th, tw-1, th-1);
+        g.drawRect(0, th, tw - 1, th - 1);
 
         // Tile 3 (index 3) - orange
         g.setColor(Color.ORANGE);
         g.fillRect(tw, th, tw, th);
         g.setColor(Color.BLACK);
-        g.drawRect(tw, th, tw-1, th-1);
+        g.drawRect(tw, th, tw - 1, th - 1);
 
         g.dispose();
 

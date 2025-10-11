@@ -1,5 +1,4 @@
-import java.awt.Color;
-import java.awt.Graphics2D;
+import java.awt.*;
 
 class DoorObject extends WorldObject {
     private boolean locked;
@@ -20,10 +19,6 @@ class DoorObject extends WorldObject {
         return locked;
     }
 
-    boolean isOpen() {
-        return open;
-    }
-
     void setLocked(boolean locked) {
         this.locked = locked;
         setFlag(StateFlag.LOCKED, locked);
@@ -34,6 +29,10 @@ class DoorObject extends WorldObject {
         } else {
             setPrompt("Open Door");
         }
+    }
+
+    boolean isOpen() {
+        return open;
     }
 
     void setOpenState(boolean open) {

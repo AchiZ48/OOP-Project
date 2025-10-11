@@ -7,15 +7,13 @@ import java.io.Serializable;
 class Sprite implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
-
-    transient BufferedImage sheet;
     private final int frameW;
     private final int frameH;
     private final int framesPerRow;
     private final int rows;
     private final double fps;
     private final boolean supportsAnimation;
-
+    transient BufferedImage sheet;
     private double timeAccumulator = 0.0;
     private int currentFrame = 0;
     private int currentRow = 0;
@@ -81,8 +79,8 @@ class Sprite implements Serializable {
         double scaleX = drawW / (double) frameW;
         double scaleY = drawH / (double) frameH;
         g.scale(scaleX, scaleY);
-        g.setColor(new Color(0,0,0,180));
-        g.fillOval(0,frameH-10,frameW,16);
+        g.setColor(new Color(0, 0, 0, 180));
+        g.fillOval(0, frameH - 10, frameW, 16);
         g.drawImage(sheet, 0, 0, frameW, frameH, srcX, srcY, srcX + frameW, srcY + frameH, null);
         g.setTransform(old);
     }
@@ -114,6 +112,10 @@ class Sprite implements Serializable {
         timeAccumulator = 0.0;
     }
 
+    boolean isPlaying() {
+        return supportsAnimation && playing;
+    }
+
     void setPlaying(boolean playing) {
         if (!supportsAnimation) {
             return;
@@ -122,10 +124,6 @@ class Sprite implements Serializable {
         if (!playing) {
             resetFrame();
         }
-    }
-
-    boolean isPlaying() {
-        return supportsAnimation && playing;
     }
 
     boolean isAnimated() {

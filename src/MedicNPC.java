@@ -1,14 +1,12 @@
-import java.awt.*;
-
 class MedicNPC extends NPC {
     private static final int WIDTH = 32;
     private static final int HEIGHT = 48;
     private final int freeHealsPerRest;
-    private int freeHealsRemaining;
     private final int premiumCost;
     private final int supplyCost = 20;
     private final int essenceBonus = 2;
     private final String questId = "quest_medic_supplies";
+    private int freeHealsRemaining;
 
     MedicNPC(String id, String name, Sprite sprite, double x, double y) {
         super(id, name, sprite, x, y, WIDTH, HEIGHT);

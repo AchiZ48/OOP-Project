@@ -2,12 +2,12 @@ import java.awt.*;
 import java.io.Serializable;
 
 public abstract class Entity implements Serializable {
+    public Stats stats = new Stats();
     String name;
     double x, y;
     int w, h;
     double posX, posY;
     Sprite sprite;
-    public Stats stats = new Stats();
 
     abstract void update(double dt);
 

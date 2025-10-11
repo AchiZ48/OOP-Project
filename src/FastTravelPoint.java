@@ -37,19 +37,19 @@ class FastTravelPoint extends WorldObject {
         return unlocked;
     }
 
+    void setUnlocked(boolean unlocked) {
+        this.unlocked = unlocked;
+        if (unlocked) {
+            setPrompt("Use Waypoint");
+        }
+    }
+
     int getTravelCost() {
         return travelCost;
     }
 
     int getUnlockCost() {
         return unlockCost;
-    }
-
-    void setUnlocked(boolean unlocked) {
-        this.unlocked = unlocked;
-        if (unlocked) {
-            setPrompt("Use Waypoint");
-        }
     }
 
     @Override

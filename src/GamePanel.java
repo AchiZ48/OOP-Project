@@ -5,67 +5,59 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.List;
 import java.util.function.Consumer;
 
 public class GamePanel extends JPanel {
+    private static final double WORLD_MESSAGE_DURATION = 3.5;
+    private static final int BOSS_KEYS_REQUIRED = 3;
+    private static final String[] PAUSE_OPTIONS = {"Resume", "Save", "Main Menu", "Quit"};
     final int vw, vh;
+    final List<WorldMessage> worldMessages = new ArrayList<>();
+    final double LOGIC_FPS = 60;
+    final double LOGIC_DT = 1.0 / LOGIC_FPS;
+    private final QuestManager questManager = new QuestManager();
+    private final FastTravelNetwork fastTravelNetwork = new FastTravelNetwork();
+    private final DialogManager dialogManager = new DialogManager();
+    private final List<NPC> npcs = new ArrayList<>();
+    private final List<FastTravelPoint> fastTravelOptions = new ArrayList<>();
+    private final Map<String, Sprite> portraitCache = new HashMap<>();
+    private final Set<String> missingAudio = new HashSet<>();
+    private final AmbushManager ambushManager = new AmbushManager();
+    private final SoundManager soundManager = new SoundManager();
+    private final StatsMenuController statsMenu = new StatsMenuController(this);
+    private final SkillUpgradeMenu skillMenu = new SkillUpgradeMenu(this);
+    private final HudRenderer hudRenderer = new HudRenderer(this, statsMenu);
+    private final EnemyPartyGenerator enemyPartyGen = new EnemyPartyGenerator();
     BufferedImage worldBackBuffer;
     TileMap map;
     Camera camera;
     List<Player> party;
     List<Enemy> enemies;
     WorldObjectManager worldObjectManager;
-    final List<WorldMessage> worldMessages = new ArrayList<>();
-    private static final double WORLD_MESSAGE_DURATION = 3.5;
+    int activeIndex = 0;
+    boolean debugMode = false;
+    boolean showPauseOverlay = false;
+    State state = State.TITLE;
+    TitleScreen titleScreen;
+    SaveMenuScreen saveMenu;
+    BattleScreen battleScreen;
+    InputManager input;
+    Thread gameThread;
+    volatile boolean running = false;
     private Interactable highlightedInteractable;
-    private final QuestManager questManager = new QuestManager();
-    private final FastTravelNetwork fastTravelNetwork = new FastTravelNetwork();
-    private final DialogManager dialogManager = new DialogManager();
-    private final List<NPC> npcs = new ArrayList<>();
-    private final List<FastTravelPoint> fastTravelOptions = new ArrayList<>();
     private FastTravelPoint fastTravelOrigin;
     private boolean fastTravelMenuOpen = false;
     private int fastTravelSelectionIndex = 0;
-    private final Map<String, Sprite> portraitCache = new HashMap<>();
-    private final Set<String> missingAudio = new HashSet<>();
-    private final AmbushManager ambushManager = new AmbushManager();
-    private final SoundManager soundManager = new SoundManager();
     private String currentAmbientTrack = "ambient_overworld";
-    private static final int BOSS_KEYS_REQUIRED = 3;
-    private final StatsMenuController statsMenu = new StatsMenuController(this);
-    private final SkillUpgradeMenu skillMenu = new SkillUpgradeMenu(this);
-    private final HudRenderer hudRenderer = new HudRenderer(this, statsMenu);
     private int lastAmbientZoneId = -1;
     private int gold = 50;
     private int essence = 0;
     private int bossKeys = 0;
     private boolean gameCompleted = false;
-    private static final String[] PAUSE_OPTIONS = { "Resume", "Save", "Main Menu", "Quit" };
     private int pauseSelection = 0;
     private String lastSaveName = null;
-    int activeIndex = 0;
-    boolean debugMode = false;
-    boolean showPauseOverlay = false;
-    enum State { TITLE, SAVE_MENU, WORLD, BATTLE }
-    State state = State.TITLE;
-
-    TitleScreen titleScreen;
-    SaveMenuScreen saveMenu;
-    BattleScreen battleScreen;
-
-    InputManager input;
-    Thread gameThread;
-    volatile boolean running = false;
-    final double LOGIC_FPS = 60;
-    final double LOGIC_DT = 1.0/LOGIC_FPS;
 
     public GamePanel(int virtualWidth, int virtualHeight) {
         this.vw = virtualWidth;
@@ -98,11 +90,13 @@ public class GamePanel extends JPanel {
             if (isDisplayable()) requestFocusInWindow();
         });
     }
-    void createDefaultEnemies(){
+
+    void createDefaultEnemies() {
         enemies = new ArrayList<>();
         enemies.add(Enemy.createSample("slime"));
         enemies.add(Enemy.createSample("moodeng"));
     }
+
     void createDefaultParty() {
         party = new ArrayList<>();
         gold = 0;
@@ -147,21 +141,21 @@ public class GamePanel extends JPanel {
         worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_west", 3610, 3800, 40, 10, true));
         worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 3642, 3800, 55, 20, true));
         worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 3674, 3800, 65, 30, true));
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_west", 115*32, 77*32, 40, 10, true));
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 22*32, 119*32, 55, 20, true));
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 159*32, 10*32, 65, 30 , true));
-        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 130*32, 115*32, "Training Altar"));
-        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 196*32, 9*32, "Training Altar"));
-        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 9*32, 22*32, "Training Altar"));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_west", 115 * 32, 77 * 32, 40, 10, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 22 * 32, 119 * 32, 55, 20, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 159 * 32, 10 * 32, 65, 30, true));
+        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 130 * 32, 115 * 32, "Training Altar"));
+        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 196 * 32, 9 * 32, "Training Altar"));
+        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 9 * 32, 22 * 32, "Training Altar"));
 
-        FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 116*32, 100*32, 0, 4);
+        FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 116 * 32, 100 * 32, 0, 4);
         village.setUnlocked(true);
         worldObjectManager.add(village);
 
-        FastTravelPoint forest = WorldObjectFactory.createWaypoint("waypoint_forest", "ruins", "Ruined Outpost", 16*32, 36*32, 0, 12);
+        FastTravelPoint forest = WorldObjectFactory.createWaypoint("waypoint_forest", "ruins", "Ruined Outpost", 16 * 32, 36 * 32, 0, 12);
         worldObjectManager.add(forest);
 
-        FastTravelPoint tundra = WorldObjectFactory.createWaypoint("waypoint_tundra", "ruins", "Ruined Outpost", 166*32, 11*32, 0, 20);
+        FastTravelPoint tundra = WorldObjectFactory.createWaypoint("waypoint_tundra", "ruins", "Ruined Outpost", 166 * 32, 11 * 32, 0, 20);
         worldObjectManager.add(tundra);
 
         spawnNPCs();
@@ -252,17 +246,17 @@ public class GamePanel extends JPanel {
         }
 
         //debug Mode
-        if (input.consumeIfPressed("P")){
+        if (input.consumeIfPressed("P")) {
             debugMode = !debugMode;
         }
         // Character switching
-        if (input.consumeIfPressed("1")){
+        if (input.consumeIfPressed("1")) {
             switchToCharacter(0);
         }
-        if (input.consumeIfPressed("2")){
+        if (input.consumeIfPressed("2")) {
             switchToCharacter(1);
         }
-        if (input.consumeIfPressed("3")){
+        if (input.consumeIfPressed("3")) {
             switchToCharacter(2);
         }
         // Battle trigger
@@ -280,7 +274,7 @@ public class GamePanel extends JPanel {
             }
         }
         // Quick escape behaviour
-        if (state != State.BATTLE && input.consumeIfPressed("ESC")){
+        if (state != State.BATTLE && input.consumeIfPressed("ESC")) {
             switch (state) {
                 case WORLD:
                     if (showPauseOverlay) {
@@ -304,7 +298,7 @@ public class GamePanel extends JPanel {
         }
 
         // NEW ZOOM CONTROLS
-        if(input.consumeIfPressed("EQUALS")){
+        if (input.consumeIfPressed("EQUALS")) {
             if (state == State.WORLD && camera != null) {
                 camera.zoomIn();
                 System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
@@ -312,14 +306,14 @@ public class GamePanel extends JPanel {
         }
 
 
-        if(input.consumeIfPressed("MINUS")){
+        if (input.consumeIfPressed("MINUS")) {
             if (state == State.WORLD && camera != null) {
                 camera.zoomOut();
                 System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
             }
         }
 
-        if(input.consumeIfPressed("0")){
+        if (input.consumeIfPressed("0")) {
             if (state == State.WORLD && camera != null) {
                 camera.resetZoom();
                 System.out.println("Zoom: " + String.format("%.2f", camera.getZoom()));
@@ -411,7 +405,6 @@ public class GamePanel extends JPanel {
             }
         }
     }
-
 
 
     void updateLogic(double dt) {
@@ -511,7 +504,7 @@ public class GamePanel extends JPanel {
         if (!dialogActive && !fastTravelMenuOpen && !showPauseOverlay) {
             if (ambushManager.tryTrigger(leader, map, dt)) {
                 queueWorldMessage("Ambushed!");
-                int zoneId = map.getZone((int)(leader.x / 32), (int)(leader.y / 32));
+                int zoneId = map.getZone((int) (leader.x / 32), (int) (leader.y / 32));
                 System.out.println(zoneId);
                 startRandomEncounter(true, zoneId);
                 return;
@@ -754,6 +747,7 @@ public class GamePanel extends JPanel {
             }
         }
     }
+
     void enterBattle() {
         if (!hasRequiredBossKeys()) {
             queueWorldMessage("The boss gate remains sealed. Keys " + bossKeys + "/" + BOSS_KEYS_REQUIRED + ".");
@@ -765,8 +759,6 @@ public class GamePanel extends JPanel {
         queueWorldMessage("Remaining keys: " + bossKeys + "/" + BOSS_KEYS_REQUIRED + ".");
         startBossBattle("boss", (int) Math.max(5, getAveragePartyLevel() + 2), 0, false);
     }
-
-    private final EnemyPartyGenerator enemyPartyGen = new EnemyPartyGenerator();
 
     void enterBattle(boolean ambush) {
         startBattle(ambush);
@@ -788,17 +780,19 @@ public class GamePanel extends JPanel {
         }
     }
 
-
-    private int avgPartyLevel(){
+    private int avgPartyLevel() {
         if (party == null || party.isEmpty()) return 1;
-        int sum=0, n=0;
-        for (Player p : party){
-            if (p != null && p.getStats()!=null){ sum += p.getStats().getLevel(); n++; }
+        int sum = 0, n = 0;
+        for (Player p : party) {
+            if (p != null && p.getStats() != null) {
+                sum += p.getStats().getLevel();
+                n++;
+            }
         }
-        return Math.max(1, n==0?1:(int)Math.round(sum/(double)n));
+        return Math.max(1, n == 0 ? 1 : (int) Math.round(sum / (double) n));
     }
 
-    public void startRandomEncounter(boolean ambush, int zoneId){
+    public void startRandomEncounter(boolean ambush, int zoneId) {
         if (party == null || party.isEmpty()) return;
         closePauseMenu();
         closeFastTravelMenu();
@@ -815,7 +809,7 @@ public class GamePanel extends JPanel {
         System.out.println("Random encounter " + zoneId + " APL=" + apl);
     }
 
-    public void startBossBattle(String bossId, int bossLevel, int minions, boolean ambush){
+    public void startBossBattle(String bossId, int bossLevel, int minions, boolean ambush) {
         if (party == null || party.isEmpty()) return;
         closePauseMenu();
         closeFastTravelMenu();
@@ -830,6 +824,7 @@ public class GamePanel extends JPanel {
         state = State.BATTLE;
         System.out.println("Boss battle " + bossId + " Lv." + bossLevel);
     }
+
     boolean loadMostRecentSave() {
         if (lastSaveName == null || lastSaveName.isBlank()) {
             queueWorldMessage("No recent save to load.");
@@ -869,7 +864,6 @@ public class GamePanel extends JPanel {
     boolean isGameCompleted() {
         return gameCompleted;
     }
-
 
     void returnToWorld() {
         closePauseMenu();
@@ -1115,7 +1109,9 @@ public class GamePanel extends JPanel {
         return true;
     }
 
-    double getCooldown() { return ambushManager.getCooldown(); }
+    double getCooldown() {
+        return ambushManager.getCooldown();
+    }
 
     int getEssence() {
         return essence;
@@ -1244,6 +1240,7 @@ public class GamePanel extends JPanel {
         skillMenu.close(true);
         skillMenu.open(actor, trainerName);
     }
+
     void healPartyPercentage(double fraction) {
         if (party == null || party.isEmpty()) {
             return;
@@ -1254,9 +1251,9 @@ public class GamePanel extends JPanel {
                 continue;
             }
             Stats stats = player.getStats();
-        if (stats == null) {
-            return;
-        }
+            if (stats == null) {
+                return;
+            }
             int maxHp = stats.getMaxHp();
             if (maxHp <= 0) {
                 continue;
@@ -1354,6 +1351,7 @@ public class GamePanel extends JPanel {
 
 
     }
+
     void drawPauseMenu(Graphics2D g) {
         int menuWidth = 220, menuHeight = 140;
         int x = (getWidth() - menuWidth) / 2;
@@ -1420,7 +1418,8 @@ public class GamePanel extends JPanel {
             case 1 -> promptPauseSave();
             case 2 -> promptReturnToTitle();
             case 3 -> promptQuitGame();
-            default -> { }
+            default -> {
+            }
         }
     }
 
@@ -1502,10 +1501,6 @@ public class GamePanel extends JPanel {
         }
     }
 
-
-
-
-
     void drawWorld(Graphics2D g) {
         if (camera == null) return;
 
@@ -1577,7 +1572,7 @@ public class GamePanel extends JPanel {
 
     }
 
-    void   drawHUD(Graphics2D g) {
+    void drawHUD(Graphics2D g) {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         hudRenderer.draw(g, highlightedInteractable, dialogManager.isActive(), fastTravelMenuOpen);
         if (skillMenu.isOpen()) {
@@ -1590,6 +1585,7 @@ public class GamePanel extends JPanel {
             drawDialog(g);
         }
     }
+
     private void drawFastTravelMenu(Graphics2D g) {
         int optionCount = fastTravelOptions.size();
         int visibleCount = Math.min(6, Math.max(1, optionCount));
@@ -1750,7 +1746,7 @@ public class GamePanel extends JPanel {
                 continue;
             }
             StringBuilder builder = new StringBuilder();
-            for (String word : trimmed.split("\s+")) {
+            for (String word : trimmed.split(" +")) {
                 if (builder.length() == 0) {
                     builder.append(word);
                     continue;
@@ -1779,7 +1775,7 @@ public class GamePanel extends JPanel {
         if (cached != null) {
             return cached;
         }
-        String[] candidates = new String[] {
+        String[] candidates = new String[]{
                 "resources/sprites/portrait_" + portraitId + ".png",
                 "resources/sprites/" + portraitId + "_portrait.png",
                 "resources/sprites/" + portraitId + ".png"
@@ -1809,6 +1805,8 @@ public class GamePanel extends JPanel {
         portraitCache.put(portraitId, sprite);
         return sprite;
     }
+
+    enum State {TITLE, SAVE_MENU, WORLD, BATTLE}
 
     private static final class DepthRenderable {
         final double depth;

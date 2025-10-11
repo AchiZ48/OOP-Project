@@ -1,45 +1,32 @@
-import org.w3c.dom.*;
-import javax.xml.parsers.*;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.awt.*;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TileMap {
+    // ======== constants for Tiled flip flags ========
+    private static final long GID_MASK = 0x0FFFFFFFL;
+    private final List<Layer> backgroundLayers = new ArrayList<>();
+    private final List<Layer> foregroundLayers = new ArrayList<>();
+
+    // ======== internal: layer buckets แบบใหม่ ========
+    private final List<Layer> collisionLayers = new ArrayList<>();
+    private final List<Layer> zoneLayers = new ArrayList<>();
     // ======== public fields (คงชื่อเดิมไว้ให้เข้ากับโค้ดเก่า) ========
     int tileW, tileH, cols, rows, pixelWidth, pixelHeight;
     boolean decorationVisible;
     List<TilesetEntry> tilesets = new ArrayList<>();
 
-    // ======== internal: layer buckets แบบใหม่ ========
-
-    private static final class Layer {
-        String name;
-        int[][] data;
-        boolean visible = true;
-        int type = 0;
-        // เก็บ properties เผื่อใช้ต่อ
-        Map<String,String> props = new HashMap<>();
+    public TileMap() {
     }
-
-    private final List<Layer> backgroundLayers = new ArrayList<>();
-    private final List<Layer> foregroundLayers = new ArrayList<>();
-    private final List<Layer> collisionLayers  = new ArrayList<>();
-    private final List<Layer> zoneLayers       = new ArrayList<>();
-
-    static class TilesetEntry {
-        int firstGid;
-        Tileset tileset;
-        public TilesetEntry(int firstGid, Tileset ts) {
-            this.firstGid = firstGid;
-            this.tileset = ts;
-        }
-    }
-
-    public TileMap() {}
-
-    // ======== constants for Tiled flip flags ========
-    private static final long GID_MASK = 0x0FFFFFFFL;
 
     // ---------------- Load TMX ----------------
     public static TileMap loadFromTMX(String path) throws Exception {
@@ -60,10 +47,12 @@ public class TileMap {
         int height = Integer.parseInt(mapEl.getAttribute("height"));
 
         TileMap tm = new TileMap();
-        tm.tileW = tileW; tm.tileH = tileH;
-        tm.cols = width; tm.rows = height;
-        tm.pixelWidth = width * tileW; tm.pixelHeight = height * tileH;
-
+        tm.tileW = tileW;
+        tm.tileH = tileH;
+        tm.cols = width;
+        tm.rows = height;
+        tm.pixelWidth = width * tileW;
+        tm.pixelHeight = height * tileH;
 
 
         // ---------------- Load Tilesets ----------------
@@ -93,7 +82,7 @@ public class TileMap {
             boolean isVisible = !"0".equals(lEl.getAttribute("visible"));
 
             // อ่าน properties
-            Map<String,String> props = readProperties(lEl);
+            Map<String, String> props = readProperties(lEl);
             int type = parseInt(props.get("type"));
 
             Element dataEl = (Element) lEl.getElementsByTagName("data").item(0);
@@ -107,10 +96,13 @@ public class TileMap {
                 for (int c = 0; c < width; c++) {
                     if (idx < tokens.length) {
                         String token = tokens[idx++].trim();
-                        if (token.isEmpty()) { layerData[r][c] = 0; continue; }
+                        if (token.isEmpty()) {
+                            layerData[r][c] = 0;
+                            continue;
+                        }
 
                         long raw = Long.parseUnsignedLong(token);
-                        int gid = (int)(raw & GID_MASK);
+                        int gid = (int) (raw & GID_MASK);
                         layerData[r][c] = gid;
                     } else {
                         layerData[r][c] = 0;
@@ -128,7 +120,7 @@ public class TileMap {
 
             // กระจายเข้าบัคเก็ต
             switch (type) {
-                case 0    -> {
+                case 0 -> {
                     tm.backgroundLayers.add(L);
                     bgCount++;
                 }
@@ -149,6 +141,34 @@ public class TileMap {
         tm.decorationVisible = !tm.foregroundLayers.isEmpty(); // ตามเดิม
 
         return tm;
+    }
+
+    // ======== helpers ========
+    private static Map<String, String> readProperties(Element layerEl) {
+        Map<String, String> map = new HashMap<>();
+        NodeList propsNodes = layerEl.getElementsByTagName("properties");
+        if (propsNodes.getLength() == 0) return map;
+        Element propsEl = (Element) propsNodes.item(0);
+        NodeList propList = propsEl.getElementsByTagName("property");
+        for (int i = 0; i < propList.getLength(); i++) {
+            Element p = (Element) propList.item(i);
+            String key = p.getAttribute("name");
+            String v = p.getAttribute("value");
+            if (v.isEmpty()) v = p.getTextContent();
+            if (!key.isEmpty() && v != null) {
+                map.put(key, v.trim());
+            }
+        }
+        return map;
+    }
+
+    private static int parseInt(String s) {
+        if (s == null) return 0;
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     // ---------------- Draw ----------------
@@ -339,28 +359,23 @@ public class TileMap {
         void accept(int tileX, int tileY, int gid);
     }
 
-    // ======== helpers ========
-    private static Map<String,String> readProperties(Element layerEl) {
-        Map<String,String> map = new HashMap<>();
-        NodeList propsNodes = layerEl.getElementsByTagName("properties");
-        if (propsNodes.getLength() == 0) return map;
-        Element propsEl = (Element) propsNodes.item(0);
-        NodeList propList = propsEl.getElementsByTagName("property");
-        for (int i = 0; i < propList.getLength(); i++) {
-            Element p = (Element) propList.item(i);
-            String key = p.getAttribute("name");
-            String v = p.getAttribute("value");
-            if (v.isEmpty()) v = p.getTextContent();
-            if (!key.isEmpty() && v != null) {
-                map.put(key, v.trim());
-            }
-        }
-        return map;
+    private static final class Layer {
+        String name;
+        int[][] data;
+        boolean visible = true;
+        int type = 0;
+        // เก็บ properties เผื่อใช้ต่อ
+        Map<String, String> props = new HashMap<>();
     }
 
-    private static int parseInt(String s) {
-        if (s == null) return 0;
-        try { return Integer.parseInt(s.trim()); } catch (Exception e) { return 0; }
+    static class TilesetEntry {
+        int firstGid;
+        Tileset tileset;
+
+        public TilesetEntry(int firstGid, Tileset ts) {
+            this.firstGid = firstGid;
+            this.tileset = ts;
+        }
     }
 
 

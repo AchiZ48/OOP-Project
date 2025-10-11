@@ -1,4 +1,4 @@
-import java.awt.Rectangle;
+import java.awt.*;
 
 abstract class NPC extends Entity implements Interactable {
     final String id;
@@ -31,14 +31,6 @@ abstract class NPC extends Entity implements Interactable {
         this.prompt = (prompt == null || prompt.isEmpty()) ? "Talk" : prompt;
     }
 
-    void setInteractionPriority(int priority) {
-        interactionPriority = Math.max(0, priority);
-    }
-
-    void setActive(boolean active) {
-        this.active = active;
-    }
-
     protected void setHealth(int currentHp, int maximumHp) {
         this.stats.setBaseValue(Stats.StatType.MAX_HP, Math.max(1, maximumHp));
         this.stats.setCurrentHp(Math.max(0, (Math.min(this.stats.getMaxHp(), currentHp))));
@@ -59,6 +51,10 @@ abstract class NPC extends Entity implements Interactable {
         return active && getCurrentHp() > 0;
     }
 
+    void setActive(boolean active) {
+        this.active = active;
+    }
+
     @Override
     public String getInteractionPrompt() {
         return prompt;
@@ -67,6 +63,10 @@ abstract class NPC extends Entity implements Interactable {
     @Override
     public int getInteractionPriority() {
         return interactionPriority;
+    }
+
+    void setInteractionPriority(int priority) {
+        interactionPriority = Math.max(0, priority);
     }
 
     @Override

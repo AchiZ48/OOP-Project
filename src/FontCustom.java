@@ -3,9 +3,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class FontCustom{
+public class FontCustom {
     public static Font MainFont = null;
-    public static void loadFonts(){
+
+    public static void loadFonts() {
         try {
             InputStream is = FontCustom.class.getResourceAsStream("/fonts/kroe0555.ttf");
             if (is == null) throw new FileNotFoundException("Font file not found!");

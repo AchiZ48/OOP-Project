@@ -1,7 +1,4 @@
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.util.List;
 
 class HudRenderer {
@@ -30,7 +27,6 @@ class HudRenderer {
         Player leader = party.get(gamePanel.activeIndex);
 
 
-
         Font currencyFont = FontCustom.MainFont.deriveFont(Font.PLAIN, 16);
         g.setFont(currencyFont);
         FontMetrics currencyMetrics = g.getFontMetrics();
@@ -41,15 +37,27 @@ class HudRenderer {
         int currencyBottomMargin = 8;
         int currencyY = gamePanel.vh - currencyPanelHeight - currencyBottomMargin;
         String zoneName;
-        switch (gamePanel.map.getZone((int)(leader.x / 32), (int)(leader.y / 32))){
-            case 0 : zoneName = "Safe"; break;
-            case 1 : zoneName = "Plain"; break;
-            case 2 : zoneName = "Forest"; break;
-            case 3 : zoneName = "Desert"; break;
-            case 4 : zoneName = "Tundra"; break;
-            default: zoneName = "Safe"; break;
+        switch (gamePanel.map.getZone((int) (leader.x / 32), (int) (leader.y / 32))) {
+            case 0:
+                zoneName = "Safe";
+                break;
+            case 1:
+                zoneName = "Plain";
+                break;
+            case 2:
+                zoneName = "Forest";
+                break;
+            case 3:
+                zoneName = "Desert";
+                break;
+            case 4:
+                zoneName = "Tundra";
+                break;
+            default:
+                zoneName = "Safe";
+                break;
         }
-        g.drawString(zoneName,0,10);
+        g.drawString(zoneName, 0, 10);
         int x = 12;
         int y = currencyY - (panelH + gap) * visibleParty;
         if (y < 20) {
@@ -163,8 +171,7 @@ class HudRenderer {
             g.setColor(new Color(13, 64, 109));
             g.fillRoundRect(x, y, w, h, 2, 2);
             g.setStroke(oldStroke);
-        }
-        else{
+        } else {
             g.setColor(new Color(22, 28, 42));
             g.fillRoundRect(x, y, w, h, 3, 3);
         }
@@ -175,7 +182,7 @@ class HudRenderer {
         FontMetrics fm = g.getFontMetrics();
 
         int textX = x + 10;
-        int textY = y + fm.getAscent()+2;
+        int textY = y + fm.getAscent() + 2;
         g.setColor(Color.WHITE);
         String header = stats != null
                 ? String.format("%s                     Lv%02d", player.name, stats.getLevel())
@@ -200,13 +207,13 @@ class HudRenderer {
 //        g.drawString("HP", textX, textY);
 //        g.drawString(hpLabel, x + w - 10 - fm.stringWidth(hpLabel), textY);
         drawBar(g, x + 8, textY, barWidth, 8, hp, maxHp, new Color(255, 130, 118), new Color(215, 54, 44));
-        textY -= fm.getHeight() -2 ;
+        textY -= fm.getHeight() - 2;
 
         String bpLabel = String.format("%d/%d", Math.max(0, bp), Math.max(0, maxBp));
         g.setColor(new Color(200, 200, 200));
 //        g.drawString(bpLabel, x + w - 10 - fm.stringWidth(bpLabel), textY + 12);
         barWidth = w - 70;
-        drawBar(g, x+(w/2) - barWidth/2, textY, barWidth, 6, bp, maxBp, new Color(90, 160, 255), new Color(40, 100, 210));
+        drawBar(g, x + (w / 2) - barWidth / 2, textY, barWidth, 6, bp, maxBp, new Color(90, 160, 255), new Color(40, 100, 210));
     }
 
     private void drawBar(Graphics2D g, int x, int y, int w, int h,

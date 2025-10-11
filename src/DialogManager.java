@@ -3,14 +3,14 @@ import java.util.Collections;
 import java.util.List;
 
 class DialogManager {
+    private final List<DialogChoice> availableChoices = new ArrayList<>();
     private DialogTree activeTree;
     private DialogNode currentNode;
-    private final List<DialogChoice> availableChoices = new ArrayList<>();
     private InteractionContext context;
     private boolean textComplete = false;
     private boolean awaitingChoice = false;
     private double textTimer = 0.0;
-    private double textSpeed = 40.0;
+    private final double textSpeed = 40.0;
     private double speedMultiplier = 1.0;
     private int revealedCharacters = 0;
     private int selectedChoiceIndex = 0;
