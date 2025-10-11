@@ -61,6 +61,7 @@ public class InputManager {
         registerKey(KeyEvent.VK_EQUALS, "EQUALS");
         registerKey(KeyEvent.VK_MINUS, "MINUS");
         registerKey(KeyEvent.VK_0, "0");
+        registerKey(KeyEvent.VK_TAB, "TAB");
 
         // Control keys
         registerKey(KeyEvent.VK_ENTER, "ENTER");

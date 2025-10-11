@@ -6,6 +6,7 @@ import java.util.Locale;
 class Player extends Entity {
     @Serial
     private static final long serialVersionUID = 1L;
+    private final PlayerSkills skillProgression = new PlayerSkills();
 
     enum Direction {
         DOWN(0),
@@ -39,6 +40,18 @@ class Player extends Entity {
         return stats;
     }
 
+    PlayerSkills getSkillProgression() {
+        return skillProgression;
+    }
+
+    void initializeDefaultSkills() {
+        skillProgression.ensureSkill("strike", 1);
+        skillProgression.ensureSkill("power_attack", 1);
+        skillProgression.ensureSkill("guard", 1);
+        for (StatUpgradeDefinition def : StatUpgradeCatalog.all()) {
+            skillProgression.ensureStatEntry(def.getStatType());
+        }
+    }
 
     void applyStats(Stats newStats) {
         if (newStats == null) {
@@ -65,6 +78,7 @@ class Player extends Entity {
 
         Player player = new Player(name, spr, x, y);
         Stats stats = player.getStats();
+        player.initializeDefaultSkills();
         switch (name.toLowerCase(Locale.ROOT)) {
             case "bluu":
                 stats.setBaseValue(Stats.StatType.ARCANE, 7);

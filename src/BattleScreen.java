@@ -3,7 +3,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -19,7 +18,7 @@ public class BattleScreen {
     List<Enemy> enemy;
     int currentPlayerIndex = 0;
     int currentEnemyIndex = 0;
-    List<Skill> skills;
+    List<SkillDefinition> skills;
     int selectedSkill = 0;
     boolean waitingForInput = true;
     String lastAction = "";
@@ -33,17 +32,7 @@ public class BattleScreen {
     private final Deque<EnemyAction> enemyActionQueue = new ArrayDeque<>();
     private boolean enemyTurnActive = false;
     private double enemyActionTimer = 0.0;
-
-    static class Skill {
-        String name;
-        int cost;
-        int power;
-        String description;
-
-        Skill(String n, int c, int p, String desc) {
-            name = n; cost = c; power = p; description = desc;
-        }
-    }
+    private boolean victoryProcessed = false;
 
     private enum ActionResolution {
         NO_ACTION,
@@ -55,11 +44,7 @@ public class BattleScreen {
         this.gp = gp;
 
 
-        skills = Arrays.asList(
-                new Skill("Strike", 1, 6, "Basic attack"),
-                new Skill("Power Attack", 5, 10, "Strong attack"),
-                new Skill("Guard", 1, 0, "Reduce incoming damage")
-        );
+        skills = new ArrayList<>(SkillCatalog.all());
     }
 
     private Sprite loadSprite(String path, int frameW, int framH) {
@@ -96,9 +81,11 @@ public class BattleScreen {
         this.selectedSkill = 0;
         this.mainMenuIndex = 0;
         this.inSkillMenu = false;
+        this.victoryProcessed = false;
 
         for (Player member : this.party) {
             if (member == null) continue;
+            member.initializeDefaultSkills();
             Stats stats = member.getStats();
             stats.clearTemporaryModifiers();
             stats.setCurrentBattlePoints(1);
@@ -181,7 +168,7 @@ public class BattleScreen {
                             Stats stats = currentPlayer.getStats();
                             stats.restoreBattlePoints(2);
                             lastAction = currentPlayer.name + " meditates and restores " + "2" + " BP!";
-                            if (gp != null) gp.playSfx("guard"); // ÃƒÂ Ã‚Â¹Ã†â€™ÃƒÂ Ã‚Â¸Ã…Â ÃƒÂ Ã‚Â¹Ã¢â‚¬Â°ÃƒÂ Ã‚Â¹Ã¢â€šÂ¬ÃƒÂ Ã‚Â¸Ã‚ÂªÃƒÂ Ã‚Â¸Ã‚ÂµÃƒÂ Ã‚Â¸Ã‚Â¢ÃƒÂ Ã‚Â¸Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¹Ã¢â€šÂ¬ÃƒÂ Ã‚Â¸Ã¢â‚¬ÂÃƒÂ Ã‚Â¸Ã‚Â´ÃƒÂ Ã‚Â¸Ã‚Â¡ÃƒÂ Ã‚Â¹Ã‚ÂÃƒÂ Ã‚Â¸Ã¢â‚¬â€ÃƒÂ Ã‚Â¸Ã¢â€žÂ¢ÃƒÂ Ã‚Â¸Ã‚ÂÃƒÂ Ã‚Â¹Ã‹â€ ÃƒÂ Ã‚Â¸Ã‚Â­ÃƒÂ Ã‚Â¸Ã¢â€žÂ¢
+                            if (gp != null) gp.playSfx("guard"); // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂªÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂµÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â´ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢
                             preparedTurnIndex = -1;
                             waitingForInput = false;
                             nextTurn();
@@ -190,7 +177,7 @@ public class BattleScreen {
 
                         case 2: // Flee
                             lastAction = currentPlayer.name + " flees!";
-                            if (gp != null) gp.playSfx("bp_fail"); // ÃƒÂ Ã‚Â¸Ã‚Â«ÃƒÂ Ã‚Â¸Ã‚Â£ÃƒÂ Ã‚Â¸Ã‚Â·ÃƒÂ Ã‚Â¸Ã‚Â­ÃƒÂ Ã‚Â¹Ã¢â€šÂ¬ÃƒÂ Ã‚Â¸Ã‚ÂªÃƒÂ Ã‚Â¸Ã‚ÂµÃƒÂ Ã‚Â¸Ã‚Â¢ÃƒÂ Ã‚Â¸Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¸Ã‚Â­ÃƒÂ Ã‚Â¸Ã‚Â·ÃƒÂ Ã‚Â¹Ã‹â€ ÃƒÂ Ã‚Â¸Ã¢â€žÂ¢ÃƒÂ Ã‚Â¸Ã¢â‚¬â€ÃƒÂ Ã‚Â¸Ã‚ÂµÃƒÂ Ã‚Â¹Ã‹â€ ÃƒÂ Ã‚Â¸Ã‚Â¡ÃƒÂ Ã‚Â¸Ã‚Âµ
+                            if (gp != null) gp.playSfx("bp_fail"); // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â«ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂªÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂµÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂµÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµ
                             gp.returnToWorld();
                             break;
                     }
@@ -209,7 +196,7 @@ public class BattleScreen {
                 if (input.consumeIfPressed("3")) selectedSkill = 2;
 
                 if (input.consumeIfPressed("ENTER")) {
-                    Skill skill = skills.get(selectedSkill);
+                    SkillDefinition skill = skills.get(selectedSkill);
                     ActionResolution resolution = performPlayerSkill(currentPlayer, skill);
                     if (resolution != ActionResolution.NO_ACTION) {
                         inSkillMenu = false;
@@ -236,21 +223,28 @@ public class BattleScreen {
         }
     }
 
-    ActionResolution performPlayerSkill(Player player, Skill skill) {
+    ActionResolution performPlayerSkill(Player player, SkillDefinition skill) {
         if (player == null || skill == null) {
             return ActionResolution.NO_ACTION;
         }
+        PlayerSkills progression = player.getSkillProgression();
+        if (progression != null) {
+            progression.ensureSkill(skill.getId(), 1);
+        }
+        int level = progression != null ? progression.getLevel(skill) : 1;
         Stats stats = player.getStats();
-        if (!stats.spendBattlePoints(Math.max(0, skill.cost))) {
-            lastAction = player.name + " lacks BP for " + skill.name + "!";
+        int bpCost = Math.max(0, skill.getBattleCost());
+        if (!stats.spendBattlePoints(bpCost)) {
+            lastAction = player.name + " lacks BP for " + skill.getName() + "!";
             if (gp != null) gp.playSfx("bp_fail");
             waitingForInput = true;
             return ActionResolution.NO_ACTION;
         }
 
-        if ("Guard".equals(skill.name)) {
-            stats.applyTemporaryModifier(Collections.singletonMap(Stats.StatType.DEFENSE, 4));
-            lastAction = player.name + " braces for impact!";
+        int effectValue = skill.computePower(level);
+        if ("guard".equals(skill.getId())) {
+            stats.applyTemporaryModifier(Collections.singletonMap(Stats.StatType.DEFENSE, effectValue));
+            lastAction = player.name + " braces for impact (DEF +" + effectValue + ", Lv" + level + " " + skill.getName() + ")!";
             if (gp != null) gp.playSfx("guard");
         } else {
             Enemy target = null;
@@ -261,14 +255,14 @@ public class BattleScreen {
             }
             if (target != null) {
                 int strength = stats.getTotalValue(Stats.StatType.STRENGTH);
-                int damage = Math.max(1, strength + skill.power - target.stats.getTotalValue(Stats.StatType.DEFENSE));
+                int damage = Math.max(1, strength + effectValue - target.stats.getTotalValue(Stats.StatType.DEFENSE));
                 target.stats.setCurrentHp(Math.max(0, target.stats.getCurrentHp() - damage));
-                lastAction = player.name + " used " + skill.name + " on " + target.name + " for " + damage + " damage!";
+                lastAction = player.name + " used " + skill.getName() + " Lv" + level + " on " + target.name + " for " + damage + " damage!";
+                if (gp != null) {
+                    gp.playSfx("skill_strike");
+                }
             } else {
-                lastAction = player.name + " used " + skill.name + " but no valid target.";
-            }
-            if (gp != null) {
-                gp.playSfx("skill_strike");
+                lastAction = player.name + " used " + skill.getName() + " but no valid target.";
             }
         }
 
@@ -282,9 +276,34 @@ public class BattleScreen {
         refocusEnemyIndex();
         if (alive == 0) {
             waitingForInput = true;
+            processVictoryRewards();
             return ActionResolution.BATTLE_WON;
         }
         return ActionResolution.TURN_CONSUMED;
+    }
+
+    private void processVictoryRewards() {
+        if (victoryProcessed) {
+            return;
+        }
+        victoryProcessed = true;
+        int goldReward = 0;
+        int essenceReward = 0;
+        if (enemy != null) {
+            for (Enemy e : enemy) {
+                if (e == null || e.stats == null) {
+                    continue;
+                }
+                Stats es = e.stats;
+                int level = Math.max(1, es.getLevel());
+                int maxHp = Math.max(20, es.getMaxHp());
+                goldReward += 8 + level * 5 + maxHp / 12;
+                essenceReward += 4 + level * 3;
+            }
+        }
+        if (gp != null) {
+            gp.onBattleVictory(goldReward, essenceReward);
+        }
     }
 
     private boolean areAllEnemiesDead() {
@@ -350,11 +369,14 @@ public class BattleScreen {
         EnemyAction action = enemyActionQueue.pollFirst();
         Enemy attacker = action.attacker;
         if (attacker == null || attacker.stats.getCurrentHp() <= 0) {
+            refocusEnemyIndex();
             return;
         }
         int focusIndex = enemy.indexOf(attacker);
         if (focusIndex >= 0) {
             currentEnemyIndex = focusIndex;
+        } else {
+            refocusEnemyIndex();
         }
         Player target = selectRandomAlivePlayer();
         if (target == null) {
@@ -429,6 +451,27 @@ public class BattleScreen {
         }
         return -1;
     }
+
+    private Enemy resolveCurrentEnemy() {
+        if (enemy == null || enemy.isEmpty()) {
+            return null;
+        }
+        if (currentEnemyIndex < 0 || currentEnemyIndex >= enemy.size()) {
+            currentEnemyIndex = findFirstAliveEnemyIndex();
+        }
+        if (currentEnemyIndex < 0 || currentEnemyIndex >= enemy.size()) {
+            return null;
+        }
+        Enemy candidate = enemy.get(currentEnemyIndex);
+        if (candidate == null || candidate.stats.getCurrentHp() <= 0) {
+            currentEnemyIndex = findFirstAliveEnemyIndex();
+            if (currentEnemyIndex < 0 || currentEnemyIndex >= enemy.size()) {
+                return null;
+            }
+            candidate = enemy.get(currentEnemyIndex);
+        }
+        return candidate;
+    }
     void draw(Graphics2D g) {
         // Background
         g.setColor(new Color(6, 6, 30));
@@ -466,9 +509,8 @@ public class BattleScreen {
         int EnemySpriteAnchorX = Math.max(20, EnemySpriteBoxW + 300);
         int EnemySpriteBaseY  = Math.max(150, EnemySpriteBoxH + 100);
 
-        Enemy currentEnemy = null;
-        if (enemy != null && !enemy.isEmpty() && currentEnemyIndex >= 0 && currentEnemyIndex < enemy.size()) {
-            currentEnemy = enemy.get(currentEnemyIndex);
+        Enemy currentEnemy = resolveCurrentEnemy();
+        if (currentEnemy != null) {
             EnemySprite = getEnemySprite(currentEnemy);
         }
 
@@ -510,8 +552,9 @@ public class BattleScreen {
         int PlayerSpriteBoxW = 384;
         int PlayerSpriteBoxH = 250;
 
-        if (party != null && !party.isEmpty() && currentPlayerIndex >= 0 && currentPlayerIndex < party.size()) {
-            PlayerSprite = getPlayerSprite(party.get(currentPlayerIndex));
+        Player currentPlayer = resolveCurrentPlayer();
+        if (currentPlayer != null) {
+            PlayerSprite = getPlayerSprite(currentPlayer);
         }
 
         if (PlayerSprite != null) {
@@ -556,12 +599,17 @@ public class BattleScreen {
             // ----- SKILL SUBMENU  -----
             g.drawString("Select Skills (Left = Back)", skillTextX, skillY);
             for (int i = 0; i < skills.size(); i++) {
-                Skill skill = skills.get(i);
+                SkillDefinition skill = skills.get(i);
                 int y = skillY + 20 + i * 20;
                 g.setColor(i == selectedSkill ? Color.YELLOW : Color.WHITE);
-                String skillText = String.format("%d. %s (Cost: %d) - %s",
-                        i + 1, skill.name, skill.cost, skill.description);
-                g.drawString((i == selectedSkill ? "> " : "  ") + skillText, skillTextX, y);
+                int level = 1;
+                if (currentPlayer != null && currentPlayer.getSkillProgression() != null) {
+                    level = currentPlayer.getSkillProgression().getLevel(skill);
+                }
+                String desc = skill.describe(level);
+                String baseText = String.format("%d. %s Lv%d (Cost: %d)", i + 1, skill.getName(), level, skill.getBattleCost());
+                String fullText = desc.isEmpty() ? baseText : baseText + " - " + desc;
+                g.drawString((i == selectedSkill ? "> " : "  ") + fullText, skillTextX, y);
             }
             g.setColor(Color.GRAY);
             g.setFont(FontCustom.MainFont.deriveFont(10.0f));
@@ -635,6 +683,25 @@ public class BattleScreen {
         return sprite != null ? sprite : createPlaceholderSprite(64, 64, Color.MAGENTA);
     }
 
+    private Player resolveCurrentPlayer() {
+        if (party == null || party.isEmpty()) {
+            return null;
+        }
+        currentPlayerIndex = Math.max(0, Math.min(currentPlayerIndex, party.size() - 1));
+        Player candidate = party.get(currentPlayerIndex);
+        if (candidate == null || candidate.getStats().getCurrentHp() <= 0) {
+            for (int i = 0; i < party.size(); i++) {
+                Player p = party.get(i);
+                if (p != null && p.getStats().getCurrentHp() > 0) {
+                    currentPlayerIndex = i;
+                    candidate = p;
+                    break;
+                }
+            }
+        }
+        return candidate != null && candidate.getStats().getCurrentHp() > 0 ? candidate : null;
+    }
+
     private Sprite createPlaceholderSprite(int width, int height, Color bodyColor) {
         BufferedImage placeholder = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = placeholder.createGraphics();
@@ -646,4 +713,6 @@ public class BattleScreen {
         return Sprite.forStaticImage(placeholder);
     }
 }
+
+
 

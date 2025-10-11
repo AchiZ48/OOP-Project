@@ -6,7 +6,7 @@ class MedicNPC extends NPC {
     private final int freeHealsPerRest;
     private int freeHealsRemaining;
     private final int premiumCost;
-    private final int supplyCost = 40;
+    private final int supplyCost = 20;
     private final int essenceBonus = 2;
     private final String questId = "quest_medic_supplies";
 
@@ -48,7 +48,7 @@ class MedicNPC extends NPC {
                 "intro",
                 name,
                 "You look weary. Need patching up or perhaps something stronger?",
-                "medic",
+                "medic_pt",
                 null,
                 java.util.List.of(
                         new DialogChoice(freeHealLabel(), "free_heal",

@@ -43,6 +43,7 @@ public class GamePanel extends JPanel {
     private String currentAmbientTrack = "ambient_overworld";
     private static final int BOSS_KEYS_REQUIRED = 3;
     private final StatsMenuController statsMenu = new StatsMenuController(this);
+    private final SkillUpgradeMenu skillMenu = new SkillUpgradeMenu(this);
     private final HudRenderer hudRenderer = new HudRenderer(this, statsMenu);
     private int lastAmbientZoneId = -1;
     private int gold = 50;
@@ -113,6 +114,7 @@ public class GamePanel extends JPanel {
         fastTravelMenuOpen = false;
         fastTravelOrigin = null;
         statsMenu.reset();
+        skillMenu.reset();
         party.add(Player.createSample("Bluu", 3600, 3600));
         party.add(Player.createSample("Souri", 3600, 3600));
         party.add(Player.createSample("Bob", 3600, 3600));
@@ -145,6 +147,7 @@ public class GamePanel extends JPanel {
         worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 3620, 3600, 55, 2, true));
         worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 3630, 3600, 65, 3, true));
         worldObjectManager.add(WorldObjectFactory.createDoor("starter_door", 3640, 3600, false));
+        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 3684, 3576, "Training Altar"));
 
         FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 3700, 3600, 0, 4);
         village.setUnlocked(true);
@@ -166,8 +169,8 @@ public class GamePanel extends JPanel {
         if (interactions == null) {
             return;
         }
-        Sprite medicSprite = loadNpcSprite("medic.png", 32, 48, 6);
-        MedicNPC medic = new MedicNPC("npc_medic", "Selene", medicSprite, 280, 150);
+        Sprite medicSprite = loadNpcSprite("medic.png", 64, 96, 4);
+        MedicNPC medic = new MedicNPC("npc_medic", "Selene", medicSprite, 3266, 3558);
         npcs.add(medic);
         interactions.register(medic);
     }
@@ -199,6 +202,11 @@ public class GamePanel extends JPanel {
 
     void updateInput() {
         boolean dialogActive = dialogManager.isActive();
+
+        if (skillMenu.isOpen()) {
+            skillMenu.update();
+            return;
+        }
 
         if (input.consumeIfPressed("C")) {
             if (statsMenu.isOpen()) {
@@ -415,6 +423,13 @@ public class GamePanel extends JPanel {
 
         Player leader = party.get(activeIndex);
         boolean dialogActive = dialogManager.isActive();
+
+        skillMenu.tick(dt);
+
+        if (skillMenu.isOpen()) {
+            updateWorldMessages(dt);
+            return;
+        }
 
         if (statsMenu.isOpen()) {
             updateWorldMessages(dt);
@@ -760,6 +775,7 @@ public class GamePanel extends JPanel {
             showPauseOverlay = false;
             closeFastTravelMenu();
             statsMenu.close(true);
+            skillMenu.close(true);
             dialogManager.clear();
             battleScreen.startBattle(new ArrayList<>(party), new ArrayList<>(enemies), ambush);
             System.out.println("enter battle naja");
@@ -784,6 +800,7 @@ public class GamePanel extends JPanel {
         showPauseOverlay = false;
         closeFastTravelMenu();
         statsMenu.close(true);
+        skillMenu.close(true);
         dialogManager.clear();
         int apl = avgPartyLevel();
         List<Enemy> foes = enemyPartyGen.rollRandomParty(apl, zoneId);
@@ -799,6 +816,7 @@ public class GamePanel extends JPanel {
         showPauseOverlay = false;
         closeFastTravelMenu();
         statsMenu.close(true);
+        skillMenu.close(true);
         dialogManager.clear();// ensure templates
         java.util.List<Enemy> foes = enemyPartyGen.makeBossParty(bossId, bossLevel, minions);
         if (foes.isEmpty()) return;
@@ -812,6 +830,7 @@ public class GamePanel extends JPanel {
         showPauseOverlay = false;
         closeFastTravelMenu();
         statsMenu.close(true);
+        skillMenu.close(true);
         ambushManager.reset();
         state = State.WORLD;
         soundManager.stopChannel(SoundManager.Channel.BATTLE);
@@ -849,6 +868,7 @@ public class GamePanel extends JPanel {
                 camera.followEntity(party.get(activeIndex));
             }
             statsMenu.reset();
+        skillMenu.reset();
             lastAmbientZoneId = -1;
             updateAmbientTrack(party.isEmpty() ? null : party.get(activeIndex));
             state = State.WORLD;
@@ -928,6 +948,22 @@ public class GamePanel extends JPanel {
             return;
         }
         essence += amount;
+    }
+
+    void onBattleVictory(int goldReward, int essenceReward) {
+        int goldGained = Math.max(0, goldReward);
+        int essenceGained = Math.max(0, essenceReward);
+        if (goldGained > 0) {
+            addGold(goldGained);
+            queueWorldMessage("Looted " + goldGained + " gold from the battle.");
+        }
+        if (essenceGained > 0) {
+            addEssence(essenceGained);
+            queueWorldMessage("Gained " + essenceGained + " essence.");
+        }
+        if (goldGained <= 0 && essenceGained <= 0) {
+            queueWorldMessage("No spoils recovered.");
+        }
     }
 
     boolean spendEssence(int amount) {
@@ -1035,6 +1071,7 @@ public class GamePanel extends JPanel {
             return;
         }
         statsMenu.close(true);
+        skillMenu.close(true);
         registerFastTravelPoint(point);
         if (!fastTravelNetwork.isUnlocked(point.getPointId())) {
             fastTravelNetwork.unlock(point.getPointId());
@@ -1054,6 +1091,20 @@ public class GamePanel extends JPanel {
         fastTravelOrigin = point;
         fastTravelSelectionIndex = 0;
         playSfx("menu_open");
+    }
+
+    void openSkillUpgradeMenu(Player actor, String trainerName) {
+        if (state != State.WORLD || fastTravelMenuOpen) {
+            queueWorldMessage("This cannot be used right now.");
+            return;
+        }
+        if (dialogManager.isActive()) {
+            queueWorldMessage("Finish the conversation first.");
+            return;
+        }
+        statsMenu.close(true);
+        skillMenu.close(true);
+        skillMenu.open(actor, trainerName);
     }
     void healPartyPercentage(double fraction) {
         if (party == null || party.isEmpty()) {
@@ -1120,8 +1171,8 @@ public class GamePanel extends JPanel {
                     saveMenu.draw(gUI);
                     break;
                 case WORLD:
-                    drawWorld(gWorld);   // world ลง backBuffer
-                    drawHUD(gUI);        // HUD overlay ลง HUDBackBuffer
+                    drawWorld(gWorld);   // world à¸¥à¸‡ backBuffer
+                    drawHUD(gUI);        // HUD overlay à¸¥à¸‡ HUDBackBuffer
                     break;
                 case BATTLE:
                     battleScreen.draw(gUI);
@@ -1271,6 +1322,9 @@ public class GamePanel extends JPanel {
 
     void   drawHUD(Graphics2D g) {
         hudRenderer.draw(g, highlightedInteractable, dialogManager.isActive(), fastTravelMenuOpen);
+        if (skillMenu.isOpen()) {
+            skillMenu.draw(g);
+        }
         if (fastTravelMenuOpen) {
             drawFastTravelMenu(g);
         }
@@ -1318,7 +1372,7 @@ public class GamePanel extends JPanel {
 
             if (startIndex > 0) {
                 g.setColor(new Color(180, 180, 180));
-                g.drawString("▲ more", textX, textY - 4);
+                g.drawString("â–² more", textX, textY - 4);
             }
 
             for (int i = 0; i < visibleCount; i++) {
@@ -1347,7 +1401,7 @@ public class GamePanel extends JPanel {
             if (startIndex + visibleCount < optionCount) {
                 int indicatorY = textY + visibleCount * (fm.getHeight() + 6);
                 g.setColor(new Color(180, 180, 180));
-                g.drawString("▼ more", textX, indicatorY);
+                g.drawString("â–¼ more", textX, indicatorY);
             }
         }
 
@@ -1360,7 +1414,7 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        int boxWidth = vw - 80;
+        int boxWidth = vw - 120;
         int boxHeight = Math.min(vh / 3 + 40, 240);
         int x = 40;
         int y = vh - boxHeight - 28;
@@ -1370,7 +1424,7 @@ public class GamePanel extends JPanel {
         g.setColor(new Color(120, 180, 255));
         g.drawRoundRect(x, y, boxWidth, boxHeight, 18, 18);
 
-        Font textFont = FontCustom.MainFont.deriveFont(Font.PLAIN, 16);
+        Font textFont = FontCustom.MainFont.deriveFont(12.0f);
         g.setFont(textFont);
         FontMetrics fm = g.getFontMetrics();
 
@@ -1424,9 +1478,6 @@ public class GamePanel extends JPanel {
             g.drawString("...", textAreaX, lineY + fm.getAscent());
         }
 
-        g.setColor(new Color(170, 170, 170));
-        String hint = "Space/Enter: Next   Shift: Speed   Esc: Skip";
-        g.drawString(hint, contentX, y + boxHeight - fm.getDescent() - 14);
     }
 
     private List<String> wrapText(String text, FontMetrics fm, int maxWidth) {
@@ -1511,6 +1562,9 @@ public class GamePanel extends JPanel {
         }
     }
 }
+
+
+
 
 
 

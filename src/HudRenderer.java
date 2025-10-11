@@ -20,7 +20,7 @@ class HudRenderer {
         }
 
         int panelW = 120;
-        int panelH = 25;
+        int panelH = 26;
         int gap = 5;
         int visibleParty = Math.min(3, party.size());
 
@@ -36,13 +36,13 @@ class HudRenderer {
         FontMetrics currencyMetrics = g.getFontMetrics();
         int currencyPanelWidth = Math.max(Math.max(currencyMetrics.stringWidth(goldText), currencyMetrics.stringWidth(essenceText)), currencyMetrics.stringWidth(keyText)) + 16;
         int currencyLineHeight = currencyMetrics.getHeight();
-        int currencyPanelHeight = currencyLineHeight * 3 + 16;
+        int currencyPanelHeight = currencyLineHeight;
         int currencyX = 12;
-        int currencyBottomMargin = 12;
+        int currencyBottomMargin = 8;
         int currencyY = gamePanel.vh - currencyPanelHeight - currencyBottomMargin;
         g.drawString(Integer.toString(gamePanel.map.getZone((int)(leader.x / 32), (int)(leader.y / 32))), 100, 50);
         int x = 12;
-        int y = currencyY - (panelH + gap) * visibleParty - 16;
+        int y = currencyY - (panelH + gap) * visibleParty;
         if (y < 20) {
             y = 20;
         }
@@ -80,10 +80,10 @@ class HudRenderer {
         g.setColor(new Color(0, 0, 0, 180));
         g.fillRoundRect(x, y, width, height, 10, 10);
         int textX = x + 8;
-        int textY = y + fm.getAscent() + 6;
+        int textY = y + fm.getAscent();
         g.setColor(new Color(255, 225, 120));
         g.drawString(goldText, textX, textY);
-        textY += fm.getHeight();
+        textX = x + fm.stringWidth(goldText) + 6;
         g.setColor(new Color(176, 210, 255));
         g.drawString(essenceText, textX, textY);
         textY += fm.getHeight();
@@ -188,8 +188,10 @@ class HudRenderer {
         if (active) {
             java.awt.Stroke oldStroke = g.getStroke();
             g.setStroke(new java.awt.BasicStroke(1.6f));
+            g.setColor(new Color(0, 0, 0));
+            g.drawRoundRect(x, y, w, h, 2, 2);
             g.setColor(new Color(13, 64, 109));
-            g.fillRoundRect(x, y, w, h, 3, 3);
+            g.fillRoundRect(x, y, w, h, 2, 2);
             g.setStroke(oldStroke);
         }
         else{

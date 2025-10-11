@@ -27,6 +27,11 @@ final class WorldObjectFactory {
         return new DoorObject(id, x, y, 32, 48, sprite, locked);
     }
 
+    static SkillTrainerObject createSkillTrainer(String id, double x, double y, String displayName) {
+        Sprite sprite = createRectSprite(28, 36, new Color(122, 70, 180));
+        return new SkillTrainerObject(id, x, y, 28, 36, sprite, displayName);
+    }
+
     private static Sprite createRectSprite(int width, int height, Color color) {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = image.createGraphics();
