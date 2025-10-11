@@ -1,4 +1,3 @@
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
@@ -77,7 +76,7 @@ public class GamePanel extends JPanel {
 
         // Load tilemap with better error handling
         try {
-            map = TileMap.loadFromTMX("resources/tiles/map.tmx");
+            map = TileMap.loadFromTMX("tiles/map.tmx");
             System.out.println("TMX map loaded successfully");
         } catch (Exception e) {
             System.out.println("TMX load failed (using placeholder): " + e.getMessage());
@@ -716,8 +715,8 @@ public class GamePanel extends JPanel {
         if (missingAudio.contains(id)) {
             return false;
         }
-        File file = new File("resources/audio/" + id + ".wav");
-        if (!file.exists()) {
+        String resourcePath = "resources/audio/" + id + ".wav";
+        if (!ResourceLoader.exists(resourcePath)) {
             missingAudio.add(id);
             return false;
         }
@@ -1477,12 +1476,11 @@ public class GamePanel extends JPanel {
                 "resources/sprites/" + portraitId + ".png"
         };
         for (String path : candidates) {
-            File file = new File(path);
-            if (!file.exists()) {
+            if (!ResourceLoader.exists(path)) {
                 continue;
             }
             try {
-                BufferedImage image = ImageIO.read(file);
+                BufferedImage image = ResourceLoader.loadImage(path);
                 if (image != null) {
                     Sprite sprite = Sprite.forStaticImage(image);
                     portraitCache.put(portraitId, sprite);

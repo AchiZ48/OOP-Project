@@ -4,8 +4,8 @@ import javax.sound.sampled.Clip;
 import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
-import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -89,7 +89,7 @@ class SoundManager {
             return cached;
         }
         String basePath = "resources/audio/" + id + ".wav";
-        try (AudioInputStream stream = AudioSystem.getAudioInputStream(new File(basePath))) {
+        try (AudioInputStream stream = openAudioStream(basePath)) {
             Clip clip = AudioSystem.getClip();
             clip.open(stream);
             clipCache.put(id, clip);
@@ -134,5 +134,13 @@ class SoundManager {
             return -80f;
         }
         return (float) (20.0 * Math.log10(value));
+    }
+
+    private AudioInputStream openAudioStream(String resourcePath) throws UnsupportedAudioFileException, IOException {
+        URL url = ResourceLoader.getResourceUrl(resourcePath);
+        if (url != null) {
+            return AudioSystem.getAudioInputStream(url);
+        }
+        return AudioSystem.getAudioInputStream(new java.io.File(resourcePath));
     }
 }

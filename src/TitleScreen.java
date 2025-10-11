@@ -1,7 +1,5 @@
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 
 class TitleScreen {
@@ -12,8 +10,7 @@ class TitleScreen {
     public TitleScreen(GamePanel gp) {
         this.gp = gp;
         try {
-            File file = new File(path);
-            backgroundImage = ImageIO.read(file);
+            backgroundImage = ResourceLoader.loadImage(path);
         } catch (IOException e) {
             System.out.println("Failed to load from resource: " + path);
         }

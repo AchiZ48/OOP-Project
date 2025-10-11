@@ -1,7 +1,5 @@
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.Serial;
 import java.util.Locale;
 
@@ -52,7 +50,7 @@ class Player extends Entity {
     static Player createSample(String name, double x, double y) {
         Sprite spr;
         try {
-            BufferedImage img = ImageIO.read(new File("resources/sprites/" + name.toLowerCase() + ".png"));
+            BufferedImage img = ResourceLoader.loadImage("resources/sprites/" + name.toLowerCase() + ".png");
             spr = Sprite.fromSheet(img, 64, 96, img.getWidth()/64, 4, img.getWidth()/64);
             System.out.println("Loaded sprite for " + name);
         } catch (Exception e) {

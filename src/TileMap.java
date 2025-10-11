@@ -1,8 +1,7 @@
 import org.w3c.dom.*;
 import javax.xml.parsers.*;
 import java.awt.*;
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.*;
 import java.util.List;
 
@@ -44,11 +43,16 @@ public class TileMap {
 
     // ---------------- Load TMX ----------------
     public static TileMap loadFromTMX(String path) throws Exception {
-        File f = new File(path);
-        if (!f.exists()) throw new FileNotFoundException("TMX not found: " + path);
+        String normalizedPath = ResourceLoader.normalize(path);
+        if (normalizedPath == null || normalizedPath.isEmpty()) {
+            throw new IllegalArgumentException("TMX path is empty");
+        }
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
-        Document doc = db.parse(f);
+        Document doc;
+        try (InputStream stream = ResourceLoader.openStream(normalizedPath)) {
+            doc = db.parse(stream);
+        }
         Element mapEl = (Element) doc.getElementsByTagName("map").item(0);
         int tileW = Integer.parseInt(mapEl.getAttribute("tilewidth"));
         int tileH = Integer.parseInt(mapEl.getAttribute("tileheight"));
@@ -70,8 +74,8 @@ public class TileMap {
             String source = tsEl.getAttribute("source");
             Tileset ts;
             if (!source.isEmpty()) {
-                File tsxFile = new File(f.getParentFile(), source);
-                ts = Tileset.loadFromTSX(tsxFile.getPath(), firstGid);
+                String tsxPath = ResourceLoader.resolve(normalizedPath, source);
+                ts = Tileset.loadFromTSX(tsxPath, firstGid);
             } else {
                 int tw = Integer.parseInt(tsEl.getAttribute("tilewidth"));
                 int th = Integer.parseInt(tsEl.getAttribute("tileheight"));
@@ -312,7 +316,7 @@ public class TileMap {
     public void drawZoneOverlay(Graphics2D g, Camera cam) {
         if (zoneLayers.isEmpty()) return;
 
-        forVisibleTiles(zoneLayers.getFirst().data, cam, (tileX, tileY, gid) -> {
+        forVisibleTiles(zoneLayers.get(0).data, cam, (tileX, tileY, gid) -> {
             int zone = getZone(tileX, tileY);
             if (zone == 0) return; // ไม่มีโซนตรงนี้
 

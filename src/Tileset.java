@@ -1,25 +1,28 @@
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.InputStream;
 
 public class Tileset {
     BufferedImage image;
     int tileW, tileH, cols, rows;
 
     public static Tileset loadFromTSX(String path, int firstGid) throws Exception {
-        File f = new File(path);
-        if (!f.exists()) throw new FileNotFoundException("TSX not found: " + path);
+        String normalizedPath = ResourceLoader.normalize(path);
+        if (normalizedPath == null || normalizedPath.isEmpty()) {
+            throw new IllegalArgumentException("TSX path is empty");
+        }
 
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
-        Document doc = db.parse(f);
+        Document doc;
+        try (InputStream stream = ResourceLoader.openStream(normalizedPath)) {
+            doc = db.parse(stream);
+        }
 
         Element ts = (Element) doc.getElementsByTagName("tileset").item(0);
         int tileW = Integer.parseInt(ts.getAttribute("tilewidth"));
@@ -32,16 +35,14 @@ public class Tileset {
 
         // Try to load image from multiple locations
         BufferedImage bi = null;
-        File imgFile = new File(f.getParentFile(), src);
-        if (imgFile.exists()) {
-            bi = ImageIO.read(imgFile);
-        } else {
-            File res = new File("resources/tiles/" + src);
-            if (res.exists()) {
-                bi = ImageIO.read(res);
-            } else {
-                bi = generatePlaceholderImage(tileW, tileH, imgW, imgH);
-            }
+        String resolved = ResourceLoader.resolve(normalizedPath, src);
+        if (ResourceLoader.exists(resolved)) {
+            bi = ResourceLoader.loadImage(resolved);
+        } else if (ResourceLoader.exists("resources/tiles/" + src)) {
+            bi = ResourceLoader.loadImage("resources/tiles/" + src);
+        }
+        if (bi == null) {
+            bi = generatePlaceholderImage(tileW, tileH, imgW, imgH);
         }
 
         Tileset tileset = new Tileset();
