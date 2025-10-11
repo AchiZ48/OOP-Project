@@ -1,10 +1,7 @@
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 class SaveData implements Serializable {
     private static final long serialVersionUID = 2L;
@@ -12,12 +9,10 @@ class SaveData implements Serializable {
     final List<PlayerData> players = new ArrayList<>();
     final List<QuestData> quests = new ArrayList<>();
     final List<WorldObjectData> worldObjects = new ArrayList<>();
-    final Map<String, Integer> placementCounters = new HashMap<>();
     int activeIndex;
     int gold;
     int essence;
     int bossKeys;
-    String placementCurrent;
 
     static SaveData capture(GamePanel gp) {
         SaveData data = new SaveData();
@@ -69,17 +64,6 @@ class SaveData implements Serializable {
                 if (wod != null) {
                     data.worldObjects.add(wod);
                 }
-            }
-            PlacementManager placement = gp.worldObjectManager.getPlacementManager();
-            if (placement != null) {
-                EnumMap<PlacementManager.PlacementType, Integer> snapshot = placement.snapshotCounters();
-                for (Map.Entry<PlacementManager.PlacementType, Integer> entry : snapshot.entrySet()) {
-                    if (entry.getKey() != null && entry.getValue() != null) {
-                        data.placementCounters.put(entry.getKey().name(), entry.getValue());
-                    }
-                }
-                PlacementManager.PlacementType current = placement.getCurrent();
-                data.placementCurrent = current != null ? current.name() : null;
             }
         }
         return data;

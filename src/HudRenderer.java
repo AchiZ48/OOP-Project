@@ -79,7 +79,6 @@ class HudRenderer {
                 && !dialogActive
                 && !fastTravelMenuOpen
                 && !statsMenu.isOpen()) {
-            drawPlacementHud(g);
             drawInteractionPrompt(g, highlighted);
         }
     }
@@ -125,43 +124,6 @@ class HudRenderer {
             g.setColor(new Color(255, 255, 255, (int) (230 * alpha)));
             g.drawString(text, x + 8, y);
         }
-    }
-
-    private void drawPlacementHud(Graphics2D g) {
-        if (gamePanel.worldObjectManager == null) {
-            return;
-        }
-        PlacementManager placement = gamePanel.worldObjectManager.getPlacementManager();
-        if (placement == null) {
-            return;
-        }
-        String header = "Placement";
-        String name = placement.getCurrentLabel();
-        String placeInstruction = "Space: Place";
-        String cycleInstruction = "Q/R: Cycle   E: Use";
-        Font font = FontCustom.MainFont.deriveFont(Font.PLAIN, 8);
-        g.setFont(font);
-        FontMetrics fm = g.getFontMetrics();
-        int width = Math.max(Math.max(fm.stringWidth(header), fm.stringWidth(name)),
-                Math.max(fm.stringWidth(placeInstruction), fm.stringWidth(cycleInstruction))) + 14;
-        int lineHeight = fm.getHeight();
-        int height = lineHeight * 4 + 16;
-        int x = gamePanel.vw - width - 16;
-        int y = gamePanel.vh - height - 16;
-        g.setColor(new Color(0, 0, 0, 170));
-        g.fillRoundRect(x, y, width, height, 10, 10);
-        int textX = x + 8;
-        int textY = y + fm.getAscent() + 8;
-        g.setColor(new Color(180, 220, 255));
-        g.drawString(header, textX, textY);
-        textY += lineHeight;
-        g.setColor(Color.WHITE);
-        g.drawString(name, textX, textY);
-        textY += lineHeight;
-        g.setColor(new Color(210, 210, 210));
-        g.drawString(placeInstruction, textX, textY);
-        textY += lineHeight;
-        g.drawString(cycleInstruction, textX, textY);
     }
 
     private void drawInteractionPrompt(Graphics2D g, Interactable highlighted) {

@@ -10,11 +10,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.List;
-import java.util.Locale;
 import java.util.function.Consumer;
 
 public class GamePanel extends JPanel {
@@ -530,33 +528,6 @@ public class GamePanel extends JPanel {
         if (fastTravelMenuOpen || dialogManager.isActive()) {
             return;
         }
-        PlacementManager placement = worldObjectManager.getPlacementManager();
-        boolean placementChanged = false;
-        if (placement != null) {
-            if (input.consumeIfPressed("Q")) {
-                placement.previousType();
-                placementChanged = true;
-            }
-            if (input.consumeIfPressed("R")) {
-                placement.nextType();
-                placementChanged = true;
-            }
-            if (placementChanged) {
-                queueWorldMessage("Placement: " + placement.getCurrentLabel());
-            }
-            if (input.consumeIfPressed("SPACE")) {
-                String label = placement.getCurrentLabel();
-                if (label == null || label.isEmpty()) {
-                    label = placement.getCurrent().name();
-                }
-                WorldObject placed = worldObjectManager.placeCurrent(leader, map);
-                if (placed != null) {
-                    queueWorldMessage(label + " placed.");
-                } else {
-                    queueWorldMessage("Cannot place " + label.toLowerCase(Locale.ROOT) + " here.");
-                }
-            }
-        }
         if (input.consumeIfPressed("E")) {
             if (!worldObjectManager.tryInteract(leader)) {
                 queueWorldMessage("Nothing to interact with.");
@@ -1031,29 +1002,6 @@ public class GamePanel extends JPanel {
                 }
             } else {
                 spawnInitialObjects();
-            }
-            PlacementManager placement = worldObjectManager.getPlacementManager();
-            if (placement != null) {
-                EnumMap<PlacementManager.PlacementType, Integer> seeds = new EnumMap<>(PlacementManager.PlacementType.class);
-                if (data.placementCounters != null) {
-                    for (Map.Entry<String, Integer> entry : data.placementCounters.entrySet()) {
-                        if (entry.getKey() == null || entry.getValue() == null) {
-                            continue;
-                        }
-                        try {
-                            PlacementManager.PlacementType type = PlacementManager.PlacementType.valueOf(entry.getKey());
-                            seeds.put(type, Math.max(0, entry.getValue()));
-                        } catch (IllegalArgumentException ignored) {
-                        }
-                    }
-                }
-                placement.restoreCounters(seeds);
-                if (data.placementCurrent != null) {
-                    try {
-                        placement.setCurrent(PlacementManager.PlacementType.valueOf(data.placementCurrent));
-                    } catch (IllegalArgumentException ignored) {
-                    }
-                }
             }
         }
 

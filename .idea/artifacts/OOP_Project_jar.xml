@@ -2,6 +2,9 @@
   <artifact type="jar" name="OOP-Project:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/OOP_Project_jar</output-path>
     <root id="archive" name="OOP-Project.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/out/META-INF/MANIFEST.MF" />
+      </element>
       <element id="module-output" name="OOP-Project" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/libtiled-1.4.3.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/jaxb-api-2.3.1.jar" path-in-jar="/" />
