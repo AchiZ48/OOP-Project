@@ -1,9 +1,11 @@
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -26,6 +28,11 @@ public class BattleScreen {
     String[] mainMenu = {"Attack", "Meditate", "Flee"};
     int mainMenuIndex = 0;
     boolean inSkillMenu = false;
+    private static final double ENEMY_ACTION_WINDUP = 0.45;
+    private static final double ENEMY_ACTION_INTERVAL = 0.85;
+    private final Deque<EnemyAction> enemyActionQueue = new ArrayDeque<>();
+    private boolean enemyTurnActive = false;
+    private double enemyActionTimer = 0.0;
 
     static class Skill {
         String name;
@@ -36,6 +43,12 @@ public class BattleScreen {
         Skill(String n, int c, int p, String desc) {
             name = n; cost = c; power = p; description = desc;
         }
+    }
+
+    private enum ActionResolution {
+        NO_ACTION,
+        TURN_CONSUMED,
+        BATTLE_WON
     }
 
     public BattleScreen(GamePanel gp) {
@@ -72,7 +85,7 @@ public class BattleScreen {
             throw new RuntimeException(e);
         }
         this.party = new ArrayList<>(party);
-        this.enemy = new ArrayList<>(enemy); // ต้องไม่ว่าง
+        this.enemy = new ArrayList<>(enemy);
         System.out.println("Enttete");
         this.currentPlayerIndex = 0;
         this.currentEnemyIndex = 0;
@@ -95,13 +108,11 @@ public class BattleScreen {
             if (e != null) e.stats.setCurrentHp(e.stats.getMaxHp());
         }
 
+        refocusEnemyIndex();
+
         if (ambush) {
             this.lastAction = "Ambushed! Enemies strike first!";
-            this.currentEnemyIndex = 0;
             performEnemyTurn();
-            this.waitingForInput = true;
-            this.currentPlayerIndex = 0;
-            this.preparedTurnIndex = -1;
         }
 
         System.out.println("Battle started vs " + joinEnemyNames());
@@ -126,6 +137,11 @@ public class BattleScreen {
         if (backgroundSprite != null) backgroundSprite.update(dt);
         if (nameBannerSprite != null) nameBannerSprite.update(dt);
         for (Sprite s : backSpriteCache.values()) if (s != null) s.update(dt);
+
+        if (enemyTurnActive) {
+            processEnemyActions(dt);
+            return;
+        }
 
         if (party == null || party.isEmpty() || enemy == null) return;
 
@@ -165,7 +181,7 @@ public class BattleScreen {
                             Stats stats = currentPlayer.getStats();
                             stats.restoreBattlePoints(2);
                             lastAction = currentPlayer.name + " meditates and restores " + "2" + " BP!";
-                            if (gp != null) gp.playSfx("guard"); // ใช้เสียงเดิมแทนก่อน
+                            if (gp != null) gp.playSfx("guard"); // ÃƒÂ Ã‚Â¹Ã†â€™ÃƒÂ Ã‚Â¸Ã…Â ÃƒÂ Ã‚Â¹Ã¢â‚¬Â°ÃƒÂ Ã‚Â¹Ã¢â€šÂ¬ÃƒÂ Ã‚Â¸Ã‚ÂªÃƒÂ Ã‚Â¸Ã‚ÂµÃƒÂ Ã‚Â¸Ã‚Â¢ÃƒÂ Ã‚Â¸Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¹Ã¢â€šÂ¬ÃƒÂ Ã‚Â¸Ã¢â‚¬ÂÃƒÂ Ã‚Â¸Ã‚Â´ÃƒÂ Ã‚Â¸Ã‚Â¡ÃƒÂ Ã‚Â¹Ã‚ÂÃƒÂ Ã‚Â¸Ã¢â‚¬â€ÃƒÂ Ã‚Â¸Ã¢â€žÂ¢ÃƒÂ Ã‚Â¸Ã‚ÂÃƒÂ Ã‚Â¹Ã‹â€ ÃƒÂ Ã‚Â¸Ã‚Â­ÃƒÂ Ã‚Â¸Ã¢â€žÂ¢
                             preparedTurnIndex = -1;
                             waitingForInput = false;
                             nextTurn();
@@ -174,16 +190,16 @@ public class BattleScreen {
 
                         case 2: // Flee
                             lastAction = currentPlayer.name + " flees!";
-                            if (gp != null) gp.playSfx("bp_fail"); // หรือเสียงอื่นที่มี
+                            if (gp != null) gp.playSfx("bp_fail"); // ÃƒÂ Ã‚Â¸Ã‚Â«ÃƒÂ Ã‚Â¸Ã‚Â£ÃƒÂ Ã‚Â¸Ã‚Â·ÃƒÂ Ã‚Â¸Ã‚Â­ÃƒÂ Ã‚Â¹Ã¢â€šÂ¬ÃƒÂ Ã‚Â¸Ã‚ÂªÃƒÂ Ã‚Â¸Ã‚ÂµÃƒÂ Ã‚Â¸Ã‚Â¢ÃƒÂ Ã‚Â¸Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¸Ã‚Â­ÃƒÂ Ã‚Â¸Ã‚Â·ÃƒÂ Ã‚Â¹Ã‹â€ ÃƒÂ Ã‚Â¸Ã¢â€žÂ¢ÃƒÂ Ã‚Â¸Ã¢â‚¬â€ÃƒÂ Ã‚Â¸Ã‚ÂµÃƒÂ Ã‚Â¹Ã‹â€ ÃƒÂ Ã‚Â¸Ã‚Â¡ÃƒÂ Ã‚Â¸Ã‚Âµ
                             gp.returnToWorld();
                             break;
                     }
                 }
             }
-            // ==== SKILL SUBMENU (ของเดิม) ====
+            // ==== SKILL SUBMENU ====
             else {
                 if (input.consumeIfPressed("ESC") || input.consumeIfPressed("LEFT")) {
-                    inSkillMenu = false; // back ไปเมนูหลัก
+                    inSkillMenu = false; // back
                     return;
                 }
                 if (input.consumeIfPressed("UP"))   selectedSkill = (selectedSkill - 1 + skills.size()) % skills.size();
@@ -194,9 +210,13 @@ public class BattleScreen {
 
                 if (input.consumeIfPressed("ENTER")) {
                     Skill skill = skills.get(selectedSkill);
-                    performPlayerSkill(currentPlayer, skill);
-                    inSkillMenu = false; // หลังใช้สกิล จบรอบ-กลับเมนูหลักรอบหน้า
-                    nextTurn();
+                    ActionResolution resolution = performPlayerSkill(currentPlayer, skill);
+                    if (resolution != ActionResolution.NO_ACTION) {
+                        inSkillMenu = false;
+                    }
+                    if (resolution == ActionResolution.TURN_CONSUMED) {
+                        nextTurn();
+                    }
                 }
             }
         }
@@ -206,24 +226,26 @@ public class BattleScreen {
         currentPlayerIndex++;
         waitingForInput = true;
         preparedTurnIndex = -1;
+        if (areAllEnemiesDead()) {
+            return;
+        }
         if (currentPlayerIndex >= party.size()) {
             // All players have acted, enemy turn
             performEnemyTurn();
-            currentEnemyIndex++;
-            currentPlayerIndex = 0;
+            return;
         }
     }
 
-    void performPlayerSkill(Player player, Skill skill) {
+    ActionResolution performPlayerSkill(Player player, Skill skill) {
         if (player == null || skill == null) {
-            return;
+            return ActionResolution.NO_ACTION;
         }
         Stats stats = player.getStats();
         if (!stats.spendBattlePoints(Math.max(0, skill.cost))) {
             lastAction = player.name + " lacks BP for " + skill.name + "!";
             if (gp != null) gp.playSfx("bp_fail");
             waitingForInput = true;
-            return;
+            return ActionResolution.NO_ACTION;
         }
 
         if ("Guard".equals(skill.name)) {
@@ -254,10 +276,15 @@ public class BattleScreen {
         preparedTurnIndex = -1;
         waitingForInput = false;
 
-        // แสดงสถานะสั้น ๆ แทนการอ้าง enemy เดี่ยว
         long alive = (enemy != null ? enemy.stream().filter(e -> e != null && e.stats.getCurrentHp() > 0).count()
                 : 0);
         System.out.println(lastAction + " (Enemies alive: " + alive + ")");
+        refocusEnemyIndex();
+        if (alive == 0) {
+            waitingForInput = true;
+            return ActionResolution.BATTLE_WON;
+        }
+        return ActionResolution.TURN_CONSUMED;
     }
 
     private boolean areAllEnemiesDead() {
@@ -281,60 +308,127 @@ public class BattleScreen {
     }
 
     void performEnemyTurn() {
-        // รายชื่อผู้เล่นที่ยังมีชีวิต
-        List<Player> aliveParty = new ArrayList<>();
-        for (Player p : party) {
-            if (p.getStats().getCurrentHp() > 0) aliveParty.add(p);
-        }
-        if (aliveParty.isEmpty()) return;
+        enemyActionQueue.clear();
+        enemyActionTimer = ENEMY_ACTION_WINDUP;
+        enemyTurnActive = false;
 
-        StringBuilder sb = new StringBuilder();
-
-        if (enemy != null && !enemy.isEmpty()) {
-            // หลายศัตรู: ศัตรูที่ยังมีชีวิตโจมตีคนละ 1 ครั้ง
-            for (Enemy e : enemy) {
-                if (e == null || e.stats.getCurrentHp() <= 0) continue;
-
-                Player target = aliveParty.get((int)(Math.random() * aliveParty.size()));
-                Stats targetStats = target.getStats();
-                int defense = targetStats.getTotalValue(Stats.StatType.DEFENSE);
-
-                // ใส่สุ่มนิดหน่อยให้ดาเมจมีสวิง
-                int roll = (int)Math.round(-2 + Math.random()*5); // -2..+2
-                int raw = e.stats.getTotalValue(Stats.StatType.STRENGTH) + roll - defense;
-                int damage = Math.max(1, raw);
-
-                targetStats.takeDamage(damage);
-
-                sb.append(e.name).append(" attacks ").append(target.name)
-                        .append(" for ").append(damage).append("! ");
-
-                if (targetStats.getCurrentHp() <= 0) {
-                    sb.append(target.name).append(" is knocked out! ");
-                    // อัปเดตรายชื่อเป้าหมายที่ยังมีชีวิต
-                    aliveParty.clear();
-                    for (Player p : party) {
-                        if (p.getStats().getCurrentHp() > 0) aliveParty.add(p);
-                    }
-                    if (aliveParty.isEmpty()) break;
-                }
-
-                if (gp != null) gp.playSfx("enemy_attack");
-            }
+        if (enemy == null || enemy.isEmpty()) {
+            finishEnemyTurn();
+            return;
         }
 
-        lastAction = !sb.isEmpty() ? sb.toString() : "Enemies hesitate...";
-
-        // ล้างบัฟชั่วคราวฝั่งผู้เล่นเมื่อจบรอบศัตรู
-        for (Player p : party) {
-            Stats stats = p.getStats();
-            stats.clearTemporaryModifiers();
+        if (isPartyWiped()) {
+            return;
         }
 
-        preparedTurnIndex = -1;
-        System.out.println(lastAction);
+        for (Enemy e : enemy) {
+            if (e == null || e.stats.getCurrentHp() <= 0) continue;
+            enemyActionQueue.addLast(new EnemyAction(e));
+        }
+
+        if (enemyActionQueue.isEmpty()) {
+            finishEnemyTurn();
+            return;
+        }
+
+        lastAction = "Enemies are preparing their attacks...";
+        enemyTurnActive = true;
+        waitingForInput = false;
+        refocusEnemyIndex();
     }
 
+    private void processEnemyActions(double dt) {
+        enemyActionTimer -= dt;
+        if (enemyActionTimer > 0) {
+            return;
+        }
+        if (enemyActionQueue.isEmpty()) {
+            finishEnemyTurn();
+            return;
+        }
+        enemyActionTimer = ENEMY_ACTION_INTERVAL;
+        EnemyAction action = enemyActionQueue.pollFirst();
+        Enemy attacker = action.attacker;
+        if (attacker == null || attacker.stats.getCurrentHp() <= 0) {
+            return;
+        }
+        int focusIndex = enemy.indexOf(attacker);
+        if (focusIndex >= 0) {
+            currentEnemyIndex = focusIndex;
+        }
+        Player target = selectRandomAlivePlayer();
+        if (target == null) {
+            enemyActionQueue.clear();
+            finishEnemyTurn();
+            return;
+        }
+        Stats targetStats = target.getStats();
+        int defense = targetStats.getTotalValue(Stats.StatType.DEFENSE);
+        int roll = (int) Math.round(-2 + Math.random() * 5);
+        int raw = attacker.stats.getTotalValue(Stats.StatType.STRENGTH) + roll - defense;
+        int damage = Math.max(1, raw);
+        targetStats.takeDamage(damage);
+        lastAction = attacker.name + " attacks " + target.name + " for " + damage + "!";
+        if (targetStats.getCurrentHp() <= 0) {
+            lastAction += " " + target.name + " is knocked out!";
+        }
+        if (gp != null) gp.playSfx("enemy_attack");
+        if (isPartyWiped()) {
+            enemyActionQueue.clear();
+            enemyTurnActive = false;
+            return;
+        }
+    }
+
+    private void finishEnemyTurn() {
+        enemyTurnActive = false;
+        enemyActionTimer = 0.0;
+        enemyActionQueue.clear();
+        if (party != null) {
+            for (Player p : party) {
+                if (p != null) {
+                    p.getStats().clearTemporaryModifiers();
+                }
+            }
+        }
+        currentPlayerIndex = 0;
+        preparedTurnIndex = -1;
+        waitingForInput = true;
+        refocusEnemyIndex();
+    }
+
+    private Player selectRandomAlivePlayer() {
+        List<Player> alive = new ArrayList<>();
+        if (party != null) {
+            for (Player p : party) {
+                if (p != null && p.getStats().getCurrentHp() > 0) {
+                    alive.add(p);
+                }
+            }
+        }
+        if (alive.isEmpty()) {
+            return null;
+        }
+        int index = (int) (Math.random() * alive.size());
+        return alive.get(index);
+    }
+
+    private void refocusEnemyIndex() {
+        currentEnemyIndex = findFirstAliveEnemyIndex();
+    }
+
+    private int findFirstAliveEnemyIndex() {
+        if (enemy == null || enemy.isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < enemy.size(); i++) {
+            Enemy candidate = enemy.get(i);
+            if (candidate != null && candidate.stats.getCurrentHp() > 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
     void draw(Graphics2D g) {
         // Background
         g.setColor(new Color(6, 6, 30));
@@ -459,8 +553,8 @@ public class BattleScreen {
             g.setFont(FontCustom.MainFont.deriveFont(10.0f));
             g.drawString("Up/Down: Move  |  Enter: Confirm", panelX + 12, panelY + panelH - 12);
         } else {
-            // ----- SKILL SUBMENU (ของเดิม) -----
-            g.drawString("1.1 Select Skills (ESC = Back)", skillTextX, skillY);
+            // ----- SKILL SUBMENU  -----
+            g.drawString("Select Skills (Left = Back)", skillTextX, skillY);
             for (int i = 0; i < skills.size(); i++) {
                 Skill skill = skills.get(i);
                 int y = skillY + 20 + i * 20;
@@ -477,13 +571,9 @@ public class BattleScreen {
 
         // Action log
         g.setColor(Color.CYAN);
-        g.setFont(FontCustom.MainFont.deriveFont(12.0f));
-        g.drawString("Last Action: " + lastAction, 30, gp.vh - 10);
+        g.setFont(FontCustom.MainFont.deriveFont(10.0f));
+        g.drawString("Last Action: " + lastAction, 180, gp.vh - 10);
 
-        // Instructions
-        g.setColor(Color.GRAY);
-        g.setFont(FontCustom.MainFont.deriveFont(12.0f));
-        g.drawString("ESC: Flee | Enter: Use Skill", gp.vw - 200, gp.vh - 10);
     }
 
     private Sprite getPlayerSprite(Player player) {
@@ -529,7 +619,13 @@ public class BattleScreen {
         return sprite != null ? sprite : createPlaceholderSprite(64, 64, Color.MAGENTA);
     }
 
-    // เพิ่มตัวโหลดสำหรับศัตรู (fallback ได้หลายโฟลเดอร์/ชื่อไฟล์)
+    private static final class EnemyAction {
+        final Enemy attacker;
+
+        EnemyAction(Enemy attacker) {
+            this.attacker = attacker;
+        }
+    }
     private Sprite loadEnemySprite(String nameKey) {
         if (nameKey == null || nameKey.isEmpty()) {
             return null;
@@ -550,3 +646,4 @@ public class BattleScreen {
         return Sprite.forStaticImage(placeholder);
     }
 }
+
