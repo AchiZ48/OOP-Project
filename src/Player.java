@@ -10,6 +10,7 @@ class Player extends Entity {
     private static final double FOOT_HEIGHT = 0;
     private final PlayerSkills skillProgression = new PlayerSkills();
     private Direction facing = Direction.DOWN;
+
     public Player(String name, Sprite spr, double x, double y) {
         this.name = name;
         this.sprite = spr;

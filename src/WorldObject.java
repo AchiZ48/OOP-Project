@@ -13,6 +13,7 @@ abstract class WorldObject implements Interactable, Serializable {
     transient Sprite sprite;
     private int interactionPriority = 1;
     private String prompt = "Interact";
+
     WorldObject(String id, String type, double x, double y, int width, int height, Sprite sprite) {
         this.id = id;
         this.type = type;
