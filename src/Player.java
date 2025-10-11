@@ -90,16 +90,18 @@ class Player extends Entity {
             case "bluu":
                 stats.setBaseValue(Stats.StatType.ARCANE, 7);
                 stats.setBaseValue(Stats.StatType.SPEED, 6);
+                stats.setBaseValue(Stats.StatType.MAX_HP, 50);
                 break;
             case "souri":
                 stats.setBaseValue(Stats.StatType.SPEED, 8);
                 stats.setBaseValue(Stats.StatType.LUCK, 6);
                 stats.setBaseValue(Stats.StatType.DEFENSE, 4);
+                stats.setBaseValue(Stats.StatType.MAX_HP, 50);
                 break;
             case "bob":
                 stats.setBaseValue(Stats.StatType.STRENGTH, 7);
                 stats.setBaseValue(Stats.StatType.DEFENSE, 6);
-                stats.setBaseValue(Stats.StatType.MAX_HP, 36);
+                stats.setBaseValue(Stats.StatType.MAX_HP, 50);
                 break;
             default:
                 break;

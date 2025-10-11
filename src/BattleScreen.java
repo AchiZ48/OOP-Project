@@ -24,6 +24,10 @@ public class BattleScreen {
     String lastAction = "";
     private int preparedTurnIndex = -1;
     final Map<String, Sprite> backSpriteCache = new HashMap<>();
+
+    private static final String[] DEFEAT_OPTIONS = {"Load Last Save", "Main Menu"};
+    private boolean defeatScreenActive = false;
+    private int defeatMenuIndex = 0;
     String[] mainMenu = {"Attack", "Meditate", "Flee"};
     int mainMenuIndex = 0;
     boolean inSkillMenu = false;
@@ -132,14 +136,24 @@ public class BattleScreen {
 
         if (party == null || party.isEmpty() || enemy == null) return;
 
+        if (defeatScreenActive) {
+            handleDefeatInput(input);
+            return;
+        }
+
         if (areAllEnemiesDead()) {
             lastAction = "Victory! " + joinEnemyNames() + " defeated!";
             if (input.consumeIfPressed("ENTER") || input.consumeIfPressed("ESC")) gp.returnToWorld();
             return;
         }
         if (isPartyWiped()) {
-            lastAction = "Defeat! All party members are down!";
-            if (input.consumeIfPressed("ENTER") || input.consumeIfPressed("ESC")) gp.returnToWorld();
+            if (!defeatScreenActive) {
+                defeatScreenActive = true;
+                defeatMenuIndex = 0;
+                lastAction = "The party has fallen.";
+                gp.stopBattleMusic();
+            }
+            handleDefeatInput(input);
             return;
         }
 
@@ -481,10 +495,10 @@ public class BattleScreen {
         // Battle title
         g.setColor(Color.WHITE);
         g.setFont(FontCustom.MainFont.deriveFont(24.0f));
-        g.drawString("Battle vs: " + (enemy != null ? joinEnemyNames() : "Unknown"), 24, 40);
+        g.drawString("Battle vs: " + (enemy != null ? joinEnemyNames() : "Unknown"), 24, 20);
 
         // Party status (left side)
-        int partyX = 24, partyY = 100;
+        int partyX = 24, partyY = 50;
         int lineHeight = 20;
 
         g.setFont(FontCustom.MainFont.deriveFont(16.0f));
@@ -545,7 +559,7 @@ public class BattleScreen {
         }
 
         // Player selection panel (bottom)
-        int panelH = 120;
+        int panelH = 100;
         Sprite PlayerSprite = null;
         int PlayerSpriteAnchorX = 0;
         int PlayerSpriteBaseY = gp.vh;
@@ -568,18 +582,18 @@ public class BattleScreen {
             PlayerSprite.draw(g, drawX, drawY, drawW, drawH);
         }
 
-        int panelY = gp.vh - panelH - 40;
+        int panelY = gp.vh - panelH-20;
         if (panelY < 20) {
             panelY = Math.max(10, gp.vh - panelH - 20);
         }
-        int panelX = Math.min(Math.max(260, PlayerSpriteAnchorX + PlayerSpriteBoxW + 40), Math.max(20, gp.vw - 360));
-        int panelW = Math.max(280, gp.vw - panelX - 20);
+        int panelX = gp.vw - 360;
+        int panelW = gp.vw - panelX - 10;
 
         g.setColor(new Color(0, 0, 0, 180));
         g.fillRoundRect(panelX, panelY, panelW, panelH, 10, 10);
 
-        int skillTextX = panelX + 20;
-        int skillY = panelY + 32;
+        int skillTextX = panelX + 10;
+        int skillY = panelY + 20;
 
         g.setColor(Color.WHITE);
         g.setFont(FontCustom.MainFont.deriveFont(14.0f));
@@ -592,9 +606,6 @@ public class BattleScreen {
                 g.drawString((i == mainMenuIndex ? "> " : "  ") + (i+1) + ". " + mainMenu[i],
                         skillTextX, skillY + 24 + i * 20);
             }
-            g.setColor(Color.GRAY);
-            g.setFont(FontCustom.MainFont.deriveFont(10.0f));
-            g.drawString("Up/Down: Move  |  Enter: Confirm", panelX + 12, panelY + panelH - 12);
         } else {
             // ----- SKILL SUBMENU  -----
             g.drawString("Select Skills (Left = Back)", skillTextX, skillY);
@@ -607,21 +618,76 @@ public class BattleScreen {
                     level = currentPlayer.getSkillProgression().getLevel(skill);
                 }
                 String desc = skill.describe(level);
-                String baseText = String.format("%d. %s Lv%d (Cost: %d)", i + 1, skill.getName(), level, skill.getBattleCost());
+                String baseText = String.format("%d. %s ", i + 1, skill.getName());
                 String fullText = desc.isEmpty() ? baseText : baseText + " - " + desc;
                 g.drawString((i == selectedSkill ? "> " : "  ") + fullText, skillTextX, y);
             }
-            g.setColor(Color.GRAY);
-            g.setFont(FontCustom.MainFont.deriveFont(10.0f));
-            g.drawString("Up/Down or 1/2/3: Select  |  Enter: Use  |  ESC/Left: Back",
-                    panelX + 12, panelY + panelH - 12);
         }
 
         // Action log
         g.setColor(Color.CYAN);
         g.setFont(FontCustom.MainFont.deriveFont(10.0f));
-        g.drawString("Last Action: " + lastAction, 180, gp.vh - 10);
+        FontMetrics fm = g.getFontMetrics();
+        g.drawString(lastAction, gp.vw - fm.stringWidth(lastAction), gp.vh - 10);
+        if (defeatScreenActive) {
+            drawDefeatOverlay(g);
+        }
+    }
 
+    private void handleDefeatInput(InputManager input) {
+        if (!defeatScreenActive) {
+            return;
+        }
+        if (input.consumeIfPressed("UP")) {
+            defeatMenuIndex = (defeatMenuIndex - 1 + DEFEAT_OPTIONS.length) % DEFEAT_OPTIONS.length;
+            gp.playSfx("menu_move");
+        } else if (input.consumeIfPressed("DOWN")) {
+            defeatMenuIndex = (defeatMenuIndex + 1) % DEFEAT_OPTIONS.length;
+            gp.playSfx("menu_move");
+        }
+        if (input.consumeIfPressed("ENTER")) {
+            switch (defeatMenuIndex) {
+                case 0 -> {
+                    if (gp.loadMostRecentSave()) {
+                        defeatScreenActive = false;
+                        gp.ensureAmbientMusicPlaying();
+                    } else {
+                        gp.playSfx("menu_cancel");
+                    }
+                }
+                case 1 -> {
+                    gp.returnToTitleFromBattle();
+                    defeatScreenActive = false;
+                }
+            }
+        } else if (input.consumeIfPressed("ESC")) {
+            defeatMenuIndex = 1;
+            gp.playSfx("menu_move");
+        }
+    }
+
+    private void drawDefeatOverlay(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 200));
+        g.fillRect(0, 0, gp.vw, gp.vh);
+
+        g.setFont(FontCustom.MainFont.deriveFont(Font.BOLD, 56f));
+        g.setColor(new Color(200, 40, 30));
+        String title = "YOU DIED";
+        FontMetrics fm = g.getFontMetrics();
+        int titleX = (gp.vw - fm.stringWidth(title)) / 2;
+        int titleY = gp.vh / 2 - 80;
+        g.drawString(title, titleX, titleY);
+
+        g.setFont(FontCustom.MainFont.deriveFont(18f));
+        for (int i = 0; i < DEFEAT_OPTIONS.length; i++) {
+            boolean selected = i == defeatMenuIndex;
+            g.setColor(selected ? Color.WHITE : new Color(200, 200, 200));
+            String option = DEFEAT_OPTIONS[i];
+            int optWidth = g.getFontMetrics().stringWidth(option);
+            int optX = (gp.vw - optWidth) / 2;
+            int optY = titleY + 80 + i * 32;
+            g.drawString(option, optX, optY);
+        }
     }
 
     private Sprite getPlayerSprite(Player player) {

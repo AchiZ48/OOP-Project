@@ -145,18 +145,25 @@ public class GamePanel extends JPanel {
         fastTravelMenuOpen = false;
         fastTravelOrigin = null;
 
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_west", 3610, 3600, 40, 1, true));
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 3620, 3600, 55, 2, true));
-        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 3630, 3600, 65, 3, true));
-        worldObjectManager.add(WorldObjectFactory.createDoor("starter_door", 3640, 3600, false));
-        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 3684, 3576, "Training Altar"));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_west", 3610, 3800, 40, 10, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 3642, 3800, 55, 20, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 3674, 3800, 65, 30, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_west", 115*32, 77*32, 40, 10, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_central", 22*32, 119*32, 55, 20, true));
+        worldObjectManager.add(WorldObjectFactory.createChest("starter_chest_east", 159*32, 10*32, 65, 30 , true));
+        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 130*32, 115*32, "Training Altar"));
+        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 196*32, 9*32, "Training Altar"));
+        worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 9*32, 22*32, "Training Altar"));
 
-        FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 3700, 3600, 0, 4);
+        FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 116*32, 100*32, 0, 4);
         village.setUnlocked(true);
         worldObjectManager.add(village);
 
-        FastTravelPoint ruins = WorldObjectFactory.createWaypoint("waypoint_ruins", "ruins", "Ruined Outpost", 512, 256, 25, 12);
-        worldObjectManager.add(ruins);
+        FastTravelPoint forest = WorldObjectFactory.createWaypoint("waypoint_forest", "ruins", "Ruined Outpost", 16*32, 36*32, 0, 12);
+        worldObjectManager.add(forest);
+
+        FastTravelPoint tundra = WorldObjectFactory.createWaypoint("waypoint_tundra", "ruins", "Ruined Outpost", 166*32, 11*32, 0, 20);
+        worldObjectManager.add(tundra);
 
         spawnNPCs();
         ambushManager.reset();
@@ -173,8 +180,14 @@ public class GamePanel extends JPanel {
         }
         Sprite medicSprite = loadNpcSprite("medic.png", 64, 96, 4);
         MedicNPC medic = new MedicNPC("npc_medic", "Selene", medicSprite, 3266, 3558);
+        MedicNPC medic2 = new MedicNPC("npc_medic", "Selene", medicSprite, 5792, 256);
+        MedicNPC medic3 = new MedicNPC("npc_medic", "Selene", medicSprite, 768, 1248);
         npcs.add(medic);
         interactions.register(medic);
+        npcs.add(medic2);
+        interactions.register(medic2);
+        npcs.add(medic3);
+        interactions.register(medic3);
     }
 
     private Sprite loadNpcSprite(String fileName, int frameW, int frameH, int fps) {
@@ -676,25 +689,31 @@ public class GamePanel extends JPanel {
     }
 
     private void updateAmbientTrack(Player leader) {
+        boolean ambientActive = soundManager.isChannelPlaying(SoundManager.Channel.AMBIENT);
         if (leader == null || map == null) {
+            if (!ambientActive) {
+                playAmbientTrack(currentAmbientTrack);
+            }
             return;
         }
         int tileX = Math.max(0, Math.min(map.cols - 1, (int) (leader.getPreciseX() / map.tileW)));
         int tileY = Math.max(0, Math.min(map.rows - 1, (int) (leader.getPreciseY() / map.tileH)));
-        int zoneId = map.getZone(tileX,tileY);
-        if (zoneId == lastAmbientZoneId) {
+        int zoneId = map.getZone(tileX, tileY);
+        if (zoneId == lastAmbientZoneId && ambientActive) {
             return;
         }
         lastAmbientZoneId = zoneId;
         String track = switch (zoneId) {
-            case 769 -> "ambient_plain";
-            case 770 -> "ambient_cavern";
-            case 771 -> "ambient_forest";
-            case 772 -> "ambient_tundra";
+            case 1 -> "ambient_plain";
+            case 2 -> "ambient_forest";
+            case 3 -> "ambient_desert";
+            case 4 -> "ambient_tundra";
             default -> "ambient_overworld";
         };
         if (!track.equals(currentAmbientTrack)) {
             currentAmbientTrack = track;
+            playAmbientTrack(track);
+        } else if (!ambientActive) {
             playAmbientTrack(track);
         }
     }
@@ -834,6 +853,37 @@ public class GamePanel extends JPanel {
         state = State.BATTLE;
         System.out.println("Boss battle " + bossId + " Lv." + bossLevel);
     }
+    boolean loadMostRecentSave() {
+        if (lastSaveName == null || lastSaveName.isBlank()) {
+            queueWorldMessage("No recent save to load.");
+            return false;
+        }
+        return loadGame(lastSaveName);
+    }
+
+    void stopBattleMusic() {
+        soundManager.stopChannel(SoundManager.Channel.BATTLE);
+    }
+
+    void ensureAmbientMusicPlaying() {
+        if (!soundManager.isChannelPlaying(SoundManager.Channel.AMBIENT)) {
+            playAmbientTrack(currentAmbientTrack);
+        }
+    }
+
+    void returnToTitleFromBattle() {
+        closePauseMenu();
+        dialogManager.clear();
+        statsMenu.close(true);
+        skillMenu.close(true);
+        closeFastTravelMenu();
+        ambushManager.reset();
+        soundManager.stopChannel(SoundManager.Channel.BATTLE);
+        playAmbientTrack(currentAmbientTrack);
+        state = State.TITLE;
+        requestFocusInWindow();
+    }
+
 
     void returnToWorld() {
         closePauseMenu();

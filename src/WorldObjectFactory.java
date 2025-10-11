@@ -1,14 +1,23 @@
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 
 final class WorldObjectFactory {
     private WorldObjectFactory() {
     }
 
     static ChestObject createChest(String id, double x, double y, int baseGold, int baseEssence, boolean grantsBossKey) {
-        Sprite sprite = createRectSprite(32, 32, new Color(172, 116, 48));
-        return new ChestObject(id, x, y, 32, 32, sprite, baseGold, baseEssence, grantsBossKey);
+        Sprite spr;
+        BufferedImage img = null;
+        try {
+            img = ResourceLoader.loadImage("resources/sprites/chest.png");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        spr = Sprite.fromSheet(img, 32, 32, img.getWidth()/32, 1, img.getWidth()/32);
+        System.out.println("Loaded sprite for chest");
+        return new ChestObject(id, x, y, 32, 32, spr, baseGold, baseEssence, grantsBossKey);
     }
 
     static FastTravelPoint createWaypoint(String id,
@@ -18,8 +27,8 @@ final class WorldObjectFactory {
                                           double y,
                                           int unlockCost,
                                           int travelCost) {
-        Sprite sprite = createRectSprite(28, 40, new Color(80, 180, 220));
-        return new FastTravelPoint(id, pointId, displayName, x, y, 28, 40, sprite, unlockCost, travelCost);
+
+        return new FastTravelPoint(id, pointId, displayName, x, y, 0, 0, null, unlockCost, travelCost);
     }
 
     static DoorObject createDoor(String id, double x, double y, boolean locked) {
@@ -28,8 +37,16 @@ final class WorldObjectFactory {
     }
 
     static SkillTrainerObject createSkillTrainer(String id, double x, double y, String displayName) {
-        Sprite sprite = createRectSprite(28, 36, new Color(122, 70, 180));
-        return new SkillTrainerObject(id, x, y, 28, 36, sprite, displayName);
+        Sprite spr;
+        BufferedImage img = null;
+        try {
+            img = ResourceLoader.loadImage("resources/sprites/trainer.png");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        spr = Sprite.fromSheet(img, 64, 96, img.getWidth()/64, 1, img.getWidth()/64);
+        System.out.println("Loaded sprite for trainer");
+        return new SkillTrainerObject(id, x, y, 32, 64, spr, displayName);
     }
 
     private static Sprite createRectSprite(int width, int height, Color color) {

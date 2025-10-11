@@ -70,8 +70,6 @@ class Sprite implements Serializable {
 
     void draw(Graphics2D g, double screenX, double screenY, int drawW, int drawH) {
         if (sheet == null) {
-            g.setColor(Color.RED);
-            g.fillRect((int) Math.floor(screenX), (int) Math.floor(screenY), drawW, drawH);
             return;
         }
 

@@ -9,10 +9,9 @@ public final class EnemyPartyGenerator {
     public EnemyPartyGenerator(){
         // default pools (can be extended externally)
         EnemyRegistry.seedDefaultsIfEmpty();
-        zonePools.put(1, Arrays.asList("slime_green","slime_green","wolf","bandit"));
-        zonePools.put(2, Arrays.asList("bandit","bandit","slime_green"));
-        zonePools.put(3, Arrays.asList("wolf","wolf","bandit"));
-        zonePools.put(4, Arrays.asList("wolf","wolf","bandit"));
+        zonePools.put(1, Arrays.asList("moodeng"));
+        zonePools.put(2, Arrays.asList("MoodengVegan"));
+        zonePools.put(4, Arrays.asList("IcedMoodeng"));
     }
 
     public List<Enemy> rollRandomParty(int avgPartyLv, int zone){
@@ -38,7 +37,7 @@ public final class EnemyPartyGenerator {
         List<Enemy> res = new ArrayList<>();
         res.add(EnemyScaler.atLevel(bossTpl, bossLevel));
         for (int i=0;i<minions;i++){
-            Enemy mTpl = EnemyRegistry.template("bandit");
+            Enemy mTpl = EnemyRegistry.template("boss_moodeng");
             if (mTpl!=null) res.add(EnemyScaler.atLevel(mTpl, Math.max(1, bossLevel-1)));
         }
         return res;

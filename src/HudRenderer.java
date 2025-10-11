@@ -40,7 +40,16 @@ class HudRenderer {
         int currencyX = 12;
         int currencyBottomMargin = 8;
         int currencyY = gamePanel.vh - currencyPanelHeight - currencyBottomMargin;
-        g.drawString(Integer.toString(gamePanel.map.getZone((int)(leader.x / 32), (int)(leader.y / 32))), 100, 50);
+        String zoneName;
+        switch (gamePanel.map.getZone((int)(leader.x / 32), (int)(leader.y / 32))){
+            case 0 : zoneName = "Safe"; break;
+            case 1 : zoneName = "Plain"; break;
+            case 2 : zoneName = "Forest"; break;
+            case 3 : zoneName = "Desert"; break;
+            case 4 : zoneName = "Tundra"; break;
+            default: zoneName = "Safe"; break;
+        }
+        g.drawString(zoneName,0,10);
         int x = 12;
         int y = currencyY - (panelH + gap) * visibleParty;
         if (y < 20) {
@@ -56,7 +65,6 @@ class HudRenderer {
 
         g.setColor(new Color(180, 220, 255));
         g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 16));
-        g.drawString(String.format("Zoom: %.2fx", gamePanel.camera.getZoom()), 16, 18);
 
         if (gamePanel.state == GamePanel.State.WORLD) {
             drawWorldMessages(g);

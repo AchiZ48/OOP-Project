@@ -40,6 +40,14 @@ class SoundManager {
         battleClip = playLoop(trackId, battleClip);
     }
 
+    boolean isChannelPlaying(Channel channel) {
+        return switch (channel) {
+            case AMBIENT -> ambientClip != null && ambientClip.isActive();
+            case BATTLE -> battleClip != null && battleClip.isActive();
+            case UI -> false;
+        };
+    }
+
     void stopChannel(Channel channel) {
         switch (channel) {
             case AMBIENT -> stopClip(ambientClip);
