@@ -83,6 +83,8 @@ class Sprite implements Serializable {
         double scaleX = drawW / (double) frameW;
         double scaleY = drawH / (double) frameH;
         g.scale(scaleX, scaleY);
+        g.setColor(new Color(0,0,0,180));
+        g.fillOval(0,frameH-10,frameW,16);
         g.drawImage(sheet, 0, 0, frameW, frameH, srcX, srcY, srcX + frameW, srcY + frameH, null);
         g.setTransform(old);
     }
