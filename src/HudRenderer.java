@@ -24,6 +24,11 @@ class HudRenderer {
         String goldText = "Gold: " + gamePanel.getGold();
         String essenceText = "Essence: " + gamePanel.getEssence();
         String keyText = "Boss Keys: " + gamePanel.getBossKeys() + "/" + gamePanel.getBossKeysRequired();
+        if(gamePanel.hasRequiredBossKeys()){
+            keyText = "Press B to fight boss";
+        }else{
+            keyText = "Boss Keys: " + gamePanel.getBossKeys() + "/" + gamePanel.getBossKeysRequired();
+        }
         Player leader = party.get(gamePanel.activeIndex);
 
 
@@ -57,7 +62,7 @@ class HudRenderer {
                 zoneName = "Safe";
                 break;
         }
-        g.drawString(zoneName, 0, 10);
+        g.drawString(zoneName, 10, 20);
         int x = 12;
         int y = currencyY - (panelH + gap) * visibleParty;
         if (y < 20) {
@@ -92,6 +97,7 @@ class HudRenderer {
     }
 
     private void drawCurrencyPanel(Graphics2D g, int x, int y, int width, int height, FontMetrics fm, String goldText, String essenceText, String keyText) {
+        g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 12));
         g.setColor(new Color(0, 0, 0, 180));
         g.fillRoundRect(x, y, width, height, 10, 10);
         int textX = x + 8;
@@ -104,7 +110,8 @@ class HudRenderer {
         textY += fm.getHeight();
         Color keyColor = gamePanel.hasRequiredBossKeys() ? new Color(150, 255, 170) : new Color(255, 200, 150);
         g.setColor(keyColor);
-        g.drawString(keyText, textX, textY);
+        g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 16));
+        g.drawString(keyText, (640/2) -(fm.stringWidth(keyText)/2), 20);
         g.drawString(String.valueOf(gamePanel.getCooldown()), textX, textY + 10);
     }
 

@@ -148,14 +148,14 @@ public class GamePanel extends JPanel {
         worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 196 * 32, 9 * 32, "Training Altar"));
         worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 9 * 32, 22 * 32, "Training Altar"));
 
-        FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 116 * 32, 100 * 32, 0, 4);
+        FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 116 * 32, 101 * 32, 0, 4);
         village.setUnlocked(true);
         worldObjectManager.add(village);
 
-        FastTravelPoint forest = WorldObjectFactory.createWaypoint("waypoint_forest", "ruins", "Ruined Outpost", 16 * 32, 36 * 32, 0, 12);
+        FastTravelPoint forest = WorldObjectFactory.createWaypoint("waypoint_forest", "forest", "Forest Outpost", 17 * 32, 38 * 32, 0, 12);
         worldObjectManager.add(forest);
 
-        FastTravelPoint tundra = WorldObjectFactory.createWaypoint("waypoint_tundra", "ruins", "Ruined Outpost", 166 * 32, 11 * 32, 0, 20);
+        FastTravelPoint tundra = WorldObjectFactory.createWaypoint("waypoint_tundra", "tundra", "tundra Outpost", 166 * 32, 12 * 32, 0, 20);
         worldObjectManager.add(tundra);
 
         spawnNPCs();

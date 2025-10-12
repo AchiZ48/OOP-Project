@@ -9,10 +9,10 @@ import java.util.Map;
 import java.util.Set;
 
 public class InputManager {
-    JPanel panel;
-    Set<String> keysPressed = new HashSet<>();
-    Set<String> keysConsumed = new HashSet<>();
-    Map<String, Runnable> oneShot = new HashMap<>();
+    private JPanel panel;
+    private Set<String> keysPressed = new HashSet<>();
+    private Set<String> keysConsumed = new HashSet<>();
+    private Map<String, Runnable> oneShot = new HashMap<>();
 
 
     public InputManager(JPanel p) {

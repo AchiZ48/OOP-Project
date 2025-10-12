@@ -66,6 +66,9 @@ public class BattleScreen {
             case 1:
                 path = "bg2";
                 break;
+            case 2:
+                path = "forest";
+                break;
             case 4:
                 path = "snow";
                 break;

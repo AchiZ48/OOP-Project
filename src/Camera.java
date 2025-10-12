@@ -1,17 +1,17 @@
 public class Camera {
-    int vw, vh;
-    TileMap map;
-    double x, y;
-    double fracX = 0.0;
-    double fracY = 0.0;
-    double smooth = 8.0;
+    private int vw, vh;
+    private TileMap map;
+    private double x, y;
+    private double fracX = 0.0;
+    private double fracY = 0.0;
+    private double smooth = 8.0;
 
     // Zoom properties
-    double zoom = 1.0;
-    double targetZoom = 1.0;
-    double minZoom = 0.5;
-    double maxZoom = 4.0;
-    double zoomSpeed = 5.0;
+    private double zoom = 1.0;
+    private double targetZoom = 1.0;
+    private double minZoom = 0.5;
+    private double maxZoom = 4.0;
+    private double zoomSpeed = 5.0;
 
     // Virtual viewport dimensions (what we actually render)
     double virtualVw, virtualVh;

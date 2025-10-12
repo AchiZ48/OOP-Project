@@ -12,7 +12,7 @@ public class GameWindow {
     GamePanel panel;
 
     public GameWindow() {
-        frame = new JFrame("Turn-based Sprite Game (Fixed & Enhanced)");
+        frame = new JFrame("Solstice Warriors DEMO");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         panel = new GamePanel(virtualWidth, virtualHeight);
         frame.setContentPane(panel);
