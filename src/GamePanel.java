@@ -634,8 +634,8 @@ public class GamePanel extends JPanel {
         Player leader = party.get(activeIndex);
         double destCenterX = destination.getX() + destination.getWidth() / 2.0;
         double destBottomY = destination.getY() + destination.getHeight();
-        double targetX = destCenterX - leader.w / 2.0;
-        double targetY = destBottomY - leader.h;
+        double targetX = destination.getX() ;
+        double targetY = destination.getY() ;
 
         targetX = Math.max(0.0, Math.min(map.pixelWidth - leader.w, targetX));
         targetY = Math.max(0.0, Math.min(map.pixelHeight - leader.h, targetY));

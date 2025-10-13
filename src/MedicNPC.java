@@ -66,7 +66,7 @@ class MedicNPC extends NPC {
                 "free_heal",
                 name,
                 "Take it easy. That should hold for now.",
-                "medic",
+                "medic_pt",
                 "exit",
                 java.util.Collections.emptyList(),
                 null
@@ -77,7 +77,7 @@ class MedicNPC extends NPC {
                 "premium_heal",
                 name,
                 "Full restoration applied. Try not to bleed on my floor again.",
-                "medic",
+                "medic_pt",
                 "exit",
                 java.util.Collections.emptyList(),
                 null
@@ -88,7 +88,7 @@ class MedicNPC extends NPC {
                 "quest_branch",
                 name,
                 questText(context),
-                "medic",
+                "medic_pt",
                 null,
                 java.util.List.of(
                         new DialogChoice("I can fund your supplies.", "quest_accept",
@@ -107,7 +107,7 @@ class MedicNPC extends NPC {
                 "quest_accept",
                 name,
                 "Bring me 40 gold so I can restock proper supplies.",
-                "medic",
+                "medic_pt",
                 "exit",
                 java.util.Collections.emptyList(),
                 null
@@ -118,7 +118,7 @@ class MedicNPC extends NPC {
                 "quest_complete",
                 name,
                 "Marvelous work! The party will appreciate the fresh supplies.",
-                "medic",
+                "medic_pt",
                 "exit",
                 java.util.Collections.emptyList(),
                 null
@@ -129,7 +129,7 @@ class MedicNPC extends NPC {
                 "exit",
                 name,
                 "Stay safe out there.",
-                "medic",
+                "medic_pt",
                 null,
                 java.util.Collections.emptyList(),
                 null

@@ -76,6 +76,9 @@ public class BattleScreen {
                 path = "bg1";
                 break;
         }
+        if(Objects.equals(enemy.get(0).name, "Boss")){
+            path = "boss";
+        }
         try {
             backgroundSprite = SpriteLoader.loadSheet("resources/battlebg/" + path + ".png", 640, 360);
         } catch (IOException e) {
@@ -353,6 +356,8 @@ public class BattleScreen {
         victoryProcessed = true;
         int goldReward = 0;
         int essenceReward = 0;
+        int xpReward = 0;
+        List<Player> party = gp.party;
         if (enemy != null) {
             for (Enemy e : enemy) {
                 if (e == null || e.stats == null) {
@@ -363,10 +368,14 @@ public class BattleScreen {
                 int maxHp = Math.max(20, es.getMaxHp());
                 goldReward += 8 + level * 5 + maxHp / 12;
                 essenceReward += 4 + level * 3;
+                xpReward += 5 + level * 10;
             }
         }
         if (gp != null) {
             gp.onBattleVictory(goldReward, essenceReward);
+            for(Player x:party){
+                x.stats.gainExp(xpReward);
+            }
         }
     }
 
@@ -543,7 +552,7 @@ public class BattleScreen {
         if (backgroundSprite != null) backgroundSprite.draw(g, 0, 0, 640, 360);
 
         // Battle title
-        g.setColor(Color.WHITE);
+        g.setColor(Color.BLACK);
         g.setFont(FontCustom.MainFont.deriveFont(24.0f));
         g.drawString("Battle vs: " + (enemy != null ? joinEnemyNames() : "Unknown"), 24, 20);
 
@@ -560,21 +569,22 @@ public class BattleScreen {
                 int maxHp = stats.getMaxHp();
                 int currentBp = stats.getCurrentBattlePoints();
                 int maxBp = stats.getMaxBattlePoints();
-                g.setColor(currentHp > 0 ? Color.WHITE : Color.DARK_GRAY);
+                g.setColor(currentHp > 0 ? Color.BLACK : Color.RED);
                 String line = String.format("%s  HP:%d/%d  BP:%d/%d", p.name, currentHp, maxHp, currentBp, maxBp);
                 g.drawString(line, partyX, partyY + i * lineHeight);
             }
         }
 
         // Position enemy in center-right
-        Sprite EnemySprite = null;
-        int EnemySpriteBoxW = 84;
-        int EnemySpriteBoxH = 84;
-        int EnemySpriteAnchorX = Math.max(20, EnemySpriteBoxW + 300);
-        int EnemySpriteBaseY = Math.max(150, EnemySpriteBoxH + 100);
-
         Enemy currentEnemy = resolveCurrentEnemy();
-        if (currentEnemy != null) {
+        boolean isBoss = (currentEnemy != null && currentEnemy.name != null && currentEnemy.name.toLowerCase(Locale.ROOT).contains("boss"));
+        Sprite EnemySprite = null;
+        int EnemySpriteBoxW = isBoss ? 168 : 84;
+        int EnemySpriteBoxH = isBoss ? 168 : 84;
+        int EnemySpriteAnchorX = Math.max(20, EnemySpriteBoxW + (isBoss ? 150 : 300));
+        int EnemySpriteBaseY = Math.max(150, EnemySpriteBoxH + (isBoss ? 50 : 100));
+
+       if (currentEnemy != null) {
             EnemySprite = getEnemySprite(currentEnemy);
         }
 
@@ -584,7 +594,7 @@ public class BattleScreen {
             double scale = Math.min(1.0, Math.min(EnemySpriteBoxW / (double) frameW, EnemySpriteBoxH / (double) frameH));
             int drawW = Math.max(1, (int) Math.round(frameW * scale));
             int drawH = Math.max(1, (int) Math.round(frameH * scale));
-
+            System.out.println(frameH +" "+ drawH);
             int drawX = EnemySpriteAnchorX + 30;
             int drawY = EnemySpriteBaseY - drawH;
             EnemySprite.draw(g, drawX, drawY, drawW, drawH);
@@ -600,7 +610,7 @@ public class BattleScreen {
             g.setColor(Color.GREEN);
             int hpWidth = (int) (barW * currentEnemy.stats.getCurrentHp() / (double) currentEnemy.stats.getMaxHp());
             g.fillRect(barX, barY, hpWidth, barH);
-            g.setColor(Color.WHITE);
+            g.setColor(Color.black);
             g.drawRect(barX, barY, barW, barH);
 
             // Enemy HP text
@@ -864,7 +874,7 @@ public class BattleScreen {
         String pathStr = "resources/sprites/" + nameKey + "_back.png";
         Sprite sprite;
         if (nameKey.equals("boss")) {
-            sprite = loadSprite(pathStr, 102, 102);
+            sprite = loadSprite(pathStr, 168, 168);
             System.out.println("boss");
         } else {
             sprite = loadSprite(pathStr, 84, 84);
