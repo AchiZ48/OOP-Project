@@ -5,8 +5,8 @@ class SkillUpgradeMenu {
     private static final double MESSAGE_DURATION = 2.6;
 
     private final GamePanel gamePanel;
-    private final List<SkillDefinition> skillDefinitions;
-    private final List<StatUpgradeDefinition> statDefinitions;
+    private final List<SkillCatalog.SkillDefinition> skillDefinitions;
+    private final List<StatUpgradeCatalog.StatUpgradeDefinition> statDefinitions;
     private boolean open;
     private int playerIndex;
     private int skillIndex;
@@ -208,10 +208,10 @@ class SkillUpgradeMenu {
         int detailY;
 
         if (viewingStats) {
-            StatUpgradeDefinition selectedStat = statDefinitions.get(statIndex);
+            StatUpgradeCatalog.StatUpgradeDefinition selectedStat = statDefinitions.get(statIndex);
             int rowY = listTop;
             for (int i = 0; i < statDefinitions.size(); i++) {
-                StatUpgradeDefinition def = statDefinitions.get(i);
+                StatUpgradeCatalog.StatUpgradeDefinition def = statDefinitions.get(i);
                 int level = skills.getStatUpgradeLevel(def.getStatType());
                 boolean selected = i == statIndex;
                 String label = String.format("%s Lv%d/%d (+%d per level)", def.getDisplayName(), level, def.getMaxLevel(), def.getIncrement());
@@ -249,10 +249,10 @@ class SkillUpgradeMenu {
             g.setColor(new Color(220, 220, 255));
             g.drawString(selectedStat.describe(currentLevel), skillsPanelX, detailY);
         } else {
-            SkillDefinition selectedSkill = skillDefinitions.get(skillIndex);
+            SkillCatalog.SkillDefinition selectedSkill = skillDefinitions.get(skillIndex);
             int rowY = listTop;
             for (int i = 0; i < skillDefinitions.size(); i++) {
-                SkillDefinition def = skillDefinitions.get(i);
+                SkillCatalog.SkillDefinition def = skillDefinitions.get(i);
                 int level = skills.getLevel(def);
                 String label = String.format("%s Lv%d/%d (BP %d)", def.getName(), level, def.getMaxLevel(), def.getBattleCost());
                 boolean selected = i == skillIndex;
@@ -321,7 +321,7 @@ class SkillUpgradeMenu {
         }
 
         if (viewingStats) {
-            StatUpgradeDefinition definition = statDefinitions.get(statIndex);
+            StatUpgradeCatalog.StatUpgradeDefinition definition = statDefinitions.get(statIndex);
             if (definition == null) {
                 return;
             }
@@ -348,7 +348,7 @@ class SkillUpgradeMenu {
             setFeedback(definition.getDisplayName() + " raised to Lv" + progress.getStatUpgradeLevel(type) + "!");
             gamePanel.playSfx("dialog_select");
         } else {
-            SkillDefinition definition = skillDefinitions.get(skillIndex);
+            SkillCatalog.SkillDefinition definition = skillDefinitions.get(skillIndex);
             if (definition == null) {
                 return;
             }

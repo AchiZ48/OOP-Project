@@ -34,35 +34,35 @@ class MedicNPC extends NPC {
     }
 
     @Override
-    protected void onInteract(InteractionContext context) {
+    protected void onInteract(WorldObjectManager.InteractionContext context) {
         DialogTree tree = buildDialogTree(context);
         context.startDialog(tree);
     }
 
-    private DialogTree buildDialogTree(InteractionContext context) {
+    private DialogTree buildDialogTree(WorldObjectManager.InteractionContext context) {
         DialogTree tree = new DialogTree("medic_root", "intro");
 
-        DialogNode intro = new DialogNode(
+        DialogTree.Node intro = new DialogTree.Node(
                 "intro",
                 name,
                 "You look weary. Need patching up or perhaps something stronger?",
                 "medic_pt",
                 null,
                 java.util.List.of(
-                        new DialogChoice(freeHealLabel(), "free_heal",
+                        new DialogTree.Choice(freeHealLabel(), "free_heal",
                                 ctx -> performFreeHeal(ctx),
                                 ctx -> freeHealsRemaining > 0),
-                        new DialogChoice("Premium treatment (" + premiumCost + " gold)", "premium_heal",
+                        new DialogTree.Choice("Premium treatment (" + premiumCost + " gold)", "premium_heal",
                                 ctx -> performPremiumHeal(ctx),
                                 ctx -> ctx.getGold() >= premiumCost),
-                        new DialogChoice("Any work available?", "quest_branch"),
-                        new DialogChoice("Stay healthy!", "exit")
+                        new DialogTree.Choice("Any work available?", "quest_branch"),
+                        new DialogTree.Choice("Stay healthy!", "exit")
                 ),
                 null
         );
         tree.addNode(intro);
 
-        DialogNode freeHeal = new DialogNode(
+        DialogTree.Node freeHeal = new DialogTree.Node(
                 "free_heal",
                 name,
                 "Take it easy. That should hold for now.",
@@ -73,7 +73,7 @@ class MedicNPC extends NPC {
         );
         tree.addNode(freeHeal);
 
-        DialogNode premiumHeal = new DialogNode(
+        DialogTree.Node premiumHeal = new DialogTree.Node(
                 "premium_heal",
                 name,
                 "Full restoration applied. Try not to bleed on my floor again.",
@@ -84,26 +84,26 @@ class MedicNPC extends NPC {
         );
         tree.addNode(premiumHeal);
 
-        DialogNode questBranch = new DialogNode(
+        DialogTree.Node questBranch = new DialogTree.Node(
                 "quest_branch",
                 name,
                 questText(context),
                 "medic_pt",
                 null,
                 java.util.List.of(
-                        new DialogChoice("I can fund your supplies.", "quest_accept",
+                        new DialogTree.Choice("I can fund your supplies.", "quest_accept",
                                 ctx -> offerQuest(ctx),
                                 ctx -> canOfferQuest(ctx)),
-                        new DialogChoice("I brought the gold you need.", "quest_complete",
+                        new DialogTree.Choice("I brought the gold you need.", "quest_complete",
                                 ctx -> completeQuest(ctx),
                                 ctx -> canCompleteQuest(ctx)),
-                        new DialogChoice("Maybe later.", "exit")
+                        new DialogTree.Choice("Maybe later.", "exit")
                 ),
                 null
         );
         tree.addNode(questBranch);
 
-        DialogNode questAccept = new DialogNode(
+        DialogTree.Node questAccept = new DialogTree.Node(
                 "quest_accept",
                 name,
                 "Bring me 40 gold so I can restock proper supplies.",
@@ -114,7 +114,7 @@ class MedicNPC extends NPC {
         );
         tree.addNode(questAccept);
 
-        DialogNode questComplete = new DialogNode(
+        DialogTree.Node questComplete = new DialogTree.Node(
                 "quest_complete",
                 name,
                 "Marvelous work! The party will appreciate the fresh supplies.",
@@ -125,7 +125,7 @@ class MedicNPC extends NPC {
         );
         tree.addNode(questComplete);
 
-        DialogNode exit = new DialogNode(
+        DialogTree.Node exit = new DialogTree.Node(
                 "exit",
                 name,
                 "Stay safe out there.",
@@ -142,7 +142,7 @@ class MedicNPC extends NPC {
         return freeHealsRemaining > 0 ? "Quick patch-up (free)" : "Quick patch-up (unavailable)";
     }
 
-    private void performFreeHeal(InteractionContext context) {
+    private void performFreeHeal(WorldObjectManager.InteractionContext context) {
         if (freeHealsRemaining <= 0) {
             context.queueMessage("Medic is out of free supplies for now.");
             return;
@@ -152,7 +152,7 @@ class MedicNPC extends NPC {
         freeHealsRemaining--;
     }
 
-    private void performPremiumHeal(InteractionContext context) {
+    private void performPremiumHeal(WorldObjectManager.InteractionContext context) {
         if (!context.spendGold(premiumCost)) {
             context.queueMessage("Not enough gold for premium treatment.");
             return;
@@ -162,46 +162,46 @@ class MedicNPC extends NPC {
         context.queueMessage("The party feels revitalized!");
     }
 
-    private boolean canOfferQuest(InteractionContext context) {
+    private boolean canOfferQuest(WorldObjectManager.InteractionContext context) {
         QuestManager manager = context.getQuestManager();
         if (manager == null) {
             return false;
         }
-        Quest quest = manager.getQuest(questId);
-        return quest == null || quest.getStatus() == QuestStatus.AVAILABLE;
+        QuestManager.Quest quest = manager.getQuest(questId);
+        return quest == null || quest.getStatus() == QuestManager.Status.AVAILABLE;
     }
 
-    private boolean canCompleteQuest(InteractionContext context) {
+    private boolean canCompleteQuest(WorldObjectManager.InteractionContext context) {
         QuestManager manager = context.getQuestManager();
         if (manager == null) {
             return false;
         }
-        Quest quest = manager.getQuest(questId);
-        return quest != null && quest.getStatus() == QuestStatus.ACTIVE
+        QuestManager.Quest quest = manager.getQuest(questId);
+        return quest != null && quest.getStatus() == QuestManager.Status.ACTIVE
                 && context.getGold() >= supplyCost;
     }
 
-    private void offerQuest(InteractionContext context) {
+    private void offerQuest(WorldObjectManager.InteractionContext context) {
         QuestManager manager = context.getQuestManager();
         if (manager == null) {
             return;
         }
-        Quest quest = manager.getQuest(questId);
+        QuestManager.Quest quest = manager.getQuest(questId);
         if (quest == null) {
-            quest = new Quest(questId, "Medic Supplies", "Contribute 40 gold to restock the medic's satchel.", 60);
+            quest = new QuestManager.Quest(questId, "Medic Supplies", "Contribute 40 gold to restock the medic's satchel.", 60);
             manager.registerQuest(quest);
         }
-        quest.setStatus(QuestStatus.ACTIVE);
+        quest.setStatus(QuestManager.Status.ACTIVE);
         context.queueMessage("Quest accepted: Medic Supplies");
         context.queueMessage("Bring " + supplyCost + " gold back to Selene.");
     }
 
-    private void completeQuest(InteractionContext context) {
+    private void completeQuest(WorldObjectManager.InteractionContext context) {
         QuestManager manager = context.getQuestManager();
         if (manager == null) {
             return;
         }
-        Quest quest = manager.getQuest(questId);
+        QuestManager.Quest quest = manager.getQuest(questId);
         if (quest == null) {
             return;
         }
@@ -209,7 +209,7 @@ class MedicNPC extends NPC {
             context.queueMessage("You still need more gold for the supplies.");
             return;
         }
-        quest.setStatus(QuestStatus.COMPLETED);
+        quest.setStatus(QuestManager.Status.COMPLETED);
         int reward = quest.getRewardGold();
         context.addGold(reward);
         if (essenceBonus > 0) {
@@ -223,19 +223,19 @@ class MedicNPC extends NPC {
         }
     }
 
-    private String questText(InteractionContext context) {
+    private String questText(WorldObjectManager.InteractionContext context) {
         QuestManager manager = context.getQuestManager();
         if (manager == null) {
             return "I am running low on supplies, but I suppose that is not your concern.";
         }
-        Quest quest = manager.getQuest(questId);
-        if (quest == null || quest.getStatus() == QuestStatus.AVAILABLE) {
+        QuestManager.Quest quest = manager.getQuest(questId);
+        if (quest == null || quest.getStatus() == QuestManager.Status.AVAILABLE) {
             return "If you can spare " + supplyCost + " gold, I could restock my supplies.";
         }
-        if (quest.getStatus() == QuestStatus.ACTIVE) {
+        if (quest.getStatus() == QuestManager.Status.ACTIVE) {
             return "Have you gathered the " + supplyCost + " gold yet?";
         }
-        if (quest.getStatus() == QuestStatus.COMPLETED) {
+        if (quest.getStatus() == QuestManager.Status.COMPLETED) {
             return "Thanks again for covering the supply costs. The tinctures are flowing.";
         }
         return "Stay healthy out there.";

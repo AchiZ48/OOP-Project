@@ -1,6 +1,6 @@
 import java.awt.*;
 
-abstract class NPC extends Entity implements Interactable {
+abstract class NPC extends Entity implements WorldObjectManager.Interactable {
     final String id;
     private final Rectangle bounds = new Rectangle();
     private String prompt = "Talk";
@@ -70,7 +70,7 @@ abstract class NPC extends Entity implements Interactable {
     }
 
     @Override
-    public void interact(InteractionContext context) {
+    public void interact(WorldObjectManager.InteractionContext context) {
         if (!isActive()) {
             return;
         }
@@ -84,5 +84,5 @@ abstract class NPC extends Entity implements Interactable {
         }
     }
 
-    protected abstract void onInteract(InteractionContext context);
+    protected abstract void onInteract(WorldObjectManager.InteractionContext context);
 }

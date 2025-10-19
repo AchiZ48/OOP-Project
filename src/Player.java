@@ -78,7 +78,7 @@ class Player extends Entity {
         skillProgression.ensureSkill("strike", 1);
         skillProgression.ensureSkill("power_attack", 1);
         skillProgression.ensureSkill("guard", 1);
-        for (StatUpgradeDefinition def : StatUpgradeCatalog.all()) {
+        for (StatUpgradeCatalog.StatUpgradeDefinition def : StatUpgradeCatalog.all()) {
             skillProgression.ensureStatEntry(def.getStatType());
         }
     }

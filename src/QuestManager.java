@@ -17,7 +17,7 @@ class QuestManager {
         return quests.get(id);
     }
 
-    void setQuestStatus(String id, QuestStatus status) {
+    void setQuestStatus(String id, Status status) {
         Quest quest = quests.get(id);
         if (quest != null) {
             quest.setStatus(status);
@@ -35,5 +35,52 @@ class QuestManager {
 
     void clear() {
         quests.clear();
+    }
+
+    enum Status {
+        AVAILABLE,
+        ACTIVE,
+        COMPLETED,
+        FAILED
+    }
+
+    static final class Quest {
+        final String id;
+        final String name;
+        final String description;
+        private Status status;
+        private int rewardGold;
+
+        Quest(String id, String name, String description) {
+            this(id, name, description, 0);
+        }
+
+        Quest(String id, String name, String description, int rewardGold) {
+            this.id = id;
+            this.name = name;
+            this.description = description;
+            this.rewardGold = Math.max(0, rewardGold);
+            this.status = Status.AVAILABLE;
+        }
+
+        Status getStatus() {
+            return status;
+        }
+
+        void setStatus(Status status) {
+            this.status = status;
+        }
+
+        int getRewardGold() {
+            return rewardGold;
+        }
+
+        void setRewardGold(int rewardGold) {
+            this.rewardGold = Math.max(0, rewardGold);
+        }
+
+        boolean isComplete() {
+            return status == Status.COMPLETED;
+        }
     }
 }

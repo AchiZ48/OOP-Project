@@ -19,7 +19,7 @@ public class BattleScreen {
     List<Enemy> enemy;
     int currentPlayerIndex = 0;
     int currentEnemyIndex = 0;
-    List<SkillDefinition> skills;
+    List<SkillCatalog.SkillDefinition> skills;
     int selectedSkill = 0;
     boolean waitingForInput = true;
     String lastAction = "";
@@ -76,7 +76,7 @@ public class BattleScreen {
                 path = "bg1";
                 break;
         }
-        if(Objects.equals(enemy.get(0).name, "Boss")){
+        if (Objects.equals(enemy.get(0).name, "Boss")) {
             path = "boss";
         }
         try {
@@ -261,7 +261,7 @@ public class BattleScreen {
                 if (input.consumeIfPressed("3")) selectedSkill = 2;
 
                 if (input.consumeIfPressed("ENTER")) {
-                    SkillDefinition skill = skills.get(selectedSkill);
+                    SkillCatalog.SkillDefinition skill = skills.get(selectedSkill);
                     ActionResolution resolution = performPlayerSkill(currentPlayer, skill);
                     if (resolution != ActionResolution.NO_ACTION) {
                         inSkillMenu = false;
@@ -287,7 +287,7 @@ public class BattleScreen {
         }
     }
 
-    ActionResolution performPlayerSkill(Player player, SkillDefinition skill) {
+    ActionResolution performPlayerSkill(Player player, SkillCatalog.SkillDefinition skill) {
         if (player == null || skill == null) {
             return ActionResolution.NO_ACTION;
         }
@@ -373,7 +373,7 @@ public class BattleScreen {
         }
         if (gp != null) {
             gp.onBattleVictory(goldReward, essenceReward);
-            for(Player x:party){
+            for (Player x : party) {
                 x.stats.gainExp(xpReward);
             }
         }
@@ -584,7 +584,7 @@ public class BattleScreen {
         int EnemySpriteAnchorX = Math.max(20, EnemySpriteBoxW + (isBoss ? 150 : 300));
         int EnemySpriteBaseY = Math.max(150, EnemySpriteBoxH + (isBoss ? 50 : 100));
 
-       if (currentEnemy != null) {
+        if (currentEnemy != null) {
             EnemySprite = getEnemySprite(currentEnemy);
         }
 
@@ -594,7 +594,7 @@ public class BattleScreen {
             double scale = Math.min(1.0, Math.min(EnemySpriteBoxW / (double) frameW, EnemySpriteBoxH / (double) frameH));
             int drawW = Math.max(1, (int) Math.round(frameW * scale));
             int drawH = Math.max(1, (int) Math.round(frameH * scale));
-            System.out.println(frameH +" "+ drawH);
+            System.out.println(frameH + " " + drawH);
             int drawX = EnemySpriteAnchorX + 30;
             int drawY = EnemySpriteBaseY - drawH;
             EnemySprite.draw(g, drawX, drawY, drawW, drawH);
@@ -670,7 +670,7 @@ public class BattleScreen {
             // ----- SKILL SUBMENU  -----
             g.drawString("Select Skills (Left = Back)", skillTextX, skillY);
             for (int i = 0; i < skills.size(); i++) {
-                SkillDefinition skill = skills.get(i);
+                SkillCatalog.SkillDefinition skill = skills.get(i);
                 int y = skillY + 20 + i * 20;
                 g.setColor(i == selectedSkill ? Color.YELLOW : Color.WHITE);
                 int level = 1;

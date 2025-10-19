@@ -16,7 +16,7 @@ class PlayerSkills implements Serializable {
         return Math.max(1, levels.getOrDefault(skillId, 1));
     }
 
-    int getLevel(SkillDefinition definition) {
+    int getLevel(SkillCatalog.SkillDefinition definition) {
         return definition == null ? 1 : getLevel(definition.getId());
     }
 
@@ -74,7 +74,7 @@ class PlayerSkills implements Serializable {
         return true;
     }
 
-    boolean upgrade(SkillDefinition definition) {
+    boolean upgrade(SkillCatalog.SkillDefinition definition) {
         return definition != null && upgrade(definition.getId(), definition.getMaxLevel());
     }
 
@@ -82,7 +82,7 @@ class PlayerSkills implements Serializable {
         return getLevel(skillId) < Math.max(1, maxLevel);
     }
 
-    boolean canUpgrade(SkillDefinition definition) {
+    boolean canUpgrade(SkillCatalog.SkillDefinition definition) {
         return definition != null && canUpgrade(definition.getId(), definition.getMaxLevel());
     }
 

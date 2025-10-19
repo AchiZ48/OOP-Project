@@ -21,7 +21,7 @@ public class GamePanel extends JPanel {
     private final FastTravelNetwork fastTravelNetwork = new FastTravelNetwork();
     private final DialogManager dialogManager = new DialogManager();
     private final List<NPC> npcs = new ArrayList<>();
-    private final List<FastTravelPoint> fastTravelOptions = new ArrayList<>();
+    private final List<WorldObjectFactory.FastTravelPoint> fastTravelOptions = new ArrayList<>();
     private final Map<String, Sprite> portraitCache = new HashMap<>();
     private final Set<String> missingAudio = new HashSet<>();
     private final AmbushManager ambushManager = new AmbushManager();
@@ -29,7 +29,7 @@ public class GamePanel extends JPanel {
     private final StatsMenuController statsMenu = new StatsMenuController(this);
     private final SkillUpgradeMenu skillMenu = new SkillUpgradeMenu(this);
     private final HudRenderer hudRenderer = new HudRenderer(this, statsMenu);
-    private final EnemyPartyGenerator enemyPartyGen = new EnemyPartyGenerator();
+    private final Enemy.PartyGenerator enemyPartyGen = new Enemy.PartyGenerator();
     BufferedImage worldBackBuffer;
     TileMap map;
     Camera camera;
@@ -46,8 +46,8 @@ public class GamePanel extends JPanel {
     InputManager input;
     Thread gameThread;
     volatile boolean running = false;
-    private Interactable highlightedInteractable;
-    private FastTravelPoint fastTravelOrigin;
+    private WorldObjectManager.Interactable highlightedInteractable;
+    private WorldObjectFactory.FastTravelPoint fastTravelOrigin;
     private boolean fastTravelMenuOpen = false;
     private int fastTravelSelectionIndex = 0;
     private String currentAmbientTrack = "ambient_overworld";
@@ -148,14 +148,14 @@ public class GamePanel extends JPanel {
         worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 196 * 32, 9 * 32, "Training Altar"));
         worldObjectManager.add(WorldObjectFactory.createSkillTrainer("trainer_village", 9 * 32, 22 * 32, "Training Altar"));
 
-        FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 116 * 32, 101 * 32, 0, 4);
+        WorldObjectFactory.FastTravelPoint village = WorldObjectFactory.createWaypoint("waypoint_village", "village", "Village Plaza", 116 * 32, 101 * 32, 0, 4);
         village.setUnlocked(true);
         worldObjectManager.add(village);
 
-        FastTravelPoint forest = WorldObjectFactory.createWaypoint("waypoint_forest", "forest", "Forest Outpost", 17 * 32, 38 * 32, 0, 12);
+        WorldObjectFactory.FastTravelPoint forest = WorldObjectFactory.createWaypoint("waypoint_forest", "forest", "Forest Outpost", 17 * 32, 38 * 32, 0, 12);
         worldObjectManager.add(forest);
 
-        FastTravelPoint tundra = WorldObjectFactory.createWaypoint("waypoint_tundra", "tundra", "tundra Outpost", 166 * 32, 12 * 32, 0, 20);
+        WorldObjectFactory.FastTravelPoint tundra = WorldObjectFactory.createWaypoint("waypoint_tundra", "tundra", "tundra Outpost", 166 * 32, 12 * 32, 0, 20);
         worldObjectManager.add(tundra);
 
         spawnNPCs();
@@ -167,7 +167,7 @@ public class GamePanel extends JPanel {
         if (worldObjectManager == null) {
             return;
         }
-        InteractionManager interactions = worldObjectManager.getInteractionManager();
+        WorldObjectManager.Interactions interactions = worldObjectManager.getInteractionManager();
         if (interactions == null) {
             return;
         }
@@ -541,7 +541,7 @@ public class GamePanel extends JPanel {
             playSfx("dialog_move");
         }
 
-        List<DialogChoice> choices = dialogManager.getAvailableChoices();
+        List<DialogTree.Choice> choices = dialogManager.getAvailableChoices();
         if (dialogManager.isAwaitingChoice() && !choices.isEmpty()) {
             if (input.consumeIfPressed("1") && choices.size() >= 1) {
                 dialogManager.selectChoice(0);
@@ -606,7 +606,7 @@ public class GamePanel extends JPanel {
         }
 
         if (input.consumeIfPressed("ENTER") || input.consumeIfPressed("SPACE")) {
-            FastTravelPoint destination = fastTravelOptions.get(Math.max(0, Math.min(fastTravelSelectionIndex, optionCount - 1)));
+            WorldObjectFactory.FastTravelPoint destination = fastTravelOptions.get(Math.max(0, Math.min(fastTravelSelectionIndex, optionCount - 1)));
             int cost = Math.max(0, destination.getTravelCost());
             if (cost > 0 && !spendGold(cost)) {
                 queueWorldMessage("Need " + cost + " gold to travel.");
@@ -627,15 +627,15 @@ public class GamePanel extends JPanel {
         fastTravelSelectionIndex = 0;
     }
 
-    private void teleportPartyTo(FastTravelPoint destination) {
+    private void teleportPartyTo(WorldObjectFactory.FastTravelPoint destination) {
         if (destination == null || party == null || party.isEmpty() || map == null) {
             return;
         }
         Player leader = party.get(activeIndex);
         double destCenterX = destination.getX() + destination.getWidth() / 2.0;
         double destBottomY = destination.getY() + destination.getHeight();
-        double targetX = destination.getX() ;
-        double targetY = destination.getY() ;
+        double targetX = destination.getX();
+        double targetY = destination.getY();
 
         targetX = Math.max(0.0, Math.min(map.pixelWidth - leader.w, targetX));
         targetY = Math.max(0.0, Math.min(map.pixelHeight - leader.h, targetY));
@@ -969,7 +969,7 @@ public class GamePanel extends JPanel {
                 if (qd == null || qd.id == null || qd.id.isEmpty()) {
                     continue;
                 }
-                Quest quest = new Quest(
+                QuestManager.Quest quest = new QuestManager.Quest(
                         qd.id,
                         qd.name != null ? qd.name : qd.id,
                         qd.description != null ? qd.description : "",
@@ -1046,7 +1046,7 @@ public class GamePanel extends JPanel {
         worldMessages.add(new WorldMessage(trimmed, WORLD_MESSAGE_DURATION));
     }
 
-    void startDialog(DialogTree tree, InteractionContext context) {
+    void startDialog(DialogTree tree, WorldObjectManager.InteractionContext context) {
         if (tree == null) {
             return;
         }
@@ -1190,7 +1190,7 @@ public class GamePanel extends JPanel {
         fastTravelNetwork.unlock(pointId);
     }
 
-    void registerFastTravelPoint(FastTravelPoint point) {
+    void registerFastTravelPoint(WorldObjectFactory.FastTravelPoint point) {
         if (point == null) {
             return;
         }
@@ -1200,7 +1200,7 @@ public class GamePanel extends JPanel {
         }
     }
 
-    void openFastTravel(FastTravelPoint point) {
+    void openFastTravel(WorldObjectFactory.FastTravelPoint point) {
         if (point == null) {
             return;
         }
@@ -1211,12 +1211,12 @@ public class GamePanel extends JPanel {
             fastTravelNetwork.unlock(point.getPointId());
         }
         fastTravelOptions.clear();
-        for (FastTravelPoint candidate : fastTravelNetwork.getUnlockedPoints()) {
+        for (WorldObjectFactory.FastTravelPoint candidate : fastTravelNetwork.getUnlockedPoints()) {
             if (candidate != null && !candidate.getPointId().equals(point.getPointId())) {
                 fastTravelOptions.add(candidate);
             }
         }
-        fastTravelOptions.sort(Comparator.comparing(FastTravelPoint::getDisplayName));
+        fastTravelOptions.sort(Comparator.comparing(WorldObjectFactory.FastTravelPoint::getDisplayName));
         if (fastTravelOptions.isEmpty()) {
             queueWorldMessage("No other attuned waypoints yet.");
             return;
@@ -1278,7 +1278,7 @@ public class GamePanel extends JPanel {
         if (questId == null || questId.isEmpty()) {
             return;
         }
-        questManager.setQuestStatus(questId, QuestStatus.ACTIVE);
+        questManager.setQuestStatus(questId, QuestManager.Status.ACTIVE);
     }
 
     @Override
@@ -1631,7 +1631,7 @@ public class GamePanel extends JPanel {
 
             for (int i = 0; i < visibleCount; i++) {
                 int index = startIndex + i;
-                FastTravelPoint option = fastTravelOptions.get(index);
+                WorldObjectFactory.FastTravelPoint option = fastTravelOptions.get(index);
                 String label = option.getDisplayName();
                 int cost = Math.max(0, option.getTravelCost());
                 String costText = cost > 0 ? cost + "G" : "Free";
@@ -1711,11 +1711,11 @@ public class GamePanel extends JPanel {
             lineY += fm.getHeight() + 2;
         }
 
-        List<DialogChoice> choices = dialogManager.getAvailableChoices();
+        List<DialogTree.Choice> choices = dialogManager.getAvailableChoices();
         if (dialogManager.isAwaitingChoice() && !choices.isEmpty()) {
             lineY += 6;
             for (int i = 0; i < choices.size(); i++) {
-                DialogChoice choice = choices.get(i);
+                DialogTree.Choice choice = choices.get(i);
                 boolean selected = i == dialogManager.getSelectedChoiceIndex();
                 if (selected) {
                     g.setColor(new Color(60, 110, 200, 160));
@@ -1815,6 +1815,51 @@ public class GamePanel extends JPanel {
         DepthRenderable(double depth, Consumer<Graphics2D> drawCommand) {
             this.depth = depth;
             this.drawCommand = drawCommand;
+        }
+    }
+
+    private static final class FastTravelNetwork {
+        private final Map<String, WorldObjectFactory.FastTravelPoint> points = new HashMap<>();
+
+        void register(WorldObjectFactory.FastTravelPoint point) {
+            if (point == null || point.getPointId() == null) {
+                return;
+            }
+            points.put(point.getPointId(), point);
+        }
+
+        WorldObjectFactory.FastTravelPoint getPoint(String pointId) {
+            return points.get(pointId);
+        }
+
+        void unlock(String pointId) {
+            WorldObjectFactory.FastTravelPoint point = points.get(pointId);
+            if (point != null) {
+                point.setUnlocked(true);
+            }
+        }
+
+        boolean isUnlocked(String pointId) {
+            WorldObjectFactory.FastTravelPoint point = points.get(pointId);
+            return point != null && point.isUnlocked();
+        }
+
+        List<WorldObjectFactory.FastTravelPoint> getUnlockedPoints() {
+            List<WorldObjectFactory.FastTravelPoint> unlocked = new ArrayList<>();
+            for (WorldObjectFactory.FastTravelPoint point : points.values()) {
+                if (point.isUnlocked()) {
+                    unlocked.add(point);
+                }
+            }
+            return unlocked;
+        }
+
+        void clear() {
+            points.clear();
+        }
+
+        Collection<WorldObjectFactory.FastTravelPoint> getAllPoints() {
+            return Collections.unmodifiableCollection(points.values());
         }
     }
 }

@@ -3,11 +3,11 @@ import java.util.Collections;
 import java.util.List;
 
 class DialogManager {
-    private final List<DialogChoice> availableChoices = new ArrayList<>();
+    private final List<DialogTree.Choice> availableChoices = new ArrayList<>();
     private final double textSpeed = 40.0;
     private DialogTree activeTree;
-    private DialogNode currentNode;
-    private InteractionContext context;
+    private DialogTree.Node currentNode;
+    private WorldObjectManager.InteractionContext context;
     private boolean textComplete = false;
     private boolean awaitingChoice = false;
     private double textTimer = 0.0;
@@ -15,7 +15,7 @@ class DialogManager {
     private int revealedCharacters = 0;
     private int selectedChoiceIndex = 0;
 
-    void start(DialogTree tree, InteractionContext interactionContext) {
+    void start(DialogTree tree, WorldObjectManager.InteractionContext interactionContext) {
         if (tree == null) {
             return;
         }
@@ -68,7 +68,7 @@ class DialogManager {
         return isActive() ? currentNode.portraitId : null;
     }
 
-    List<DialogChoice> getAvailableChoices() {
+    List<DialogTree.Choice> getAvailableChoices() {
         return Collections.unmodifiableList(availableChoices);
     }
 
@@ -124,7 +124,7 @@ class DialogManager {
         if (!awaitingChoice || index < 0 || index >= availableChoices.size()) {
             return;
         }
-        DialogChoice choice = availableChoices.get(index);
+        DialogTree.Choice choice = availableChoices.get(index);
         if (!choice.isAvailable(context)) {
             return;
         }
@@ -151,7 +151,7 @@ class DialogManager {
             clear();
             return;
         }
-        DialogNode node = activeTree.getNode(nodeId);
+        DialogTree.Node node = activeTree.getNode(nodeId);
         if (node == null) {
             clear();
             return;
@@ -163,7 +163,7 @@ class DialogManager {
             node.onEnter.execute(context);
         }
         if (!node.choices.isEmpty()) {
-            for (DialogChoice choice : node.choices) {
+            for (DialogTree.Choice choice : node.choices) {
                 if (choice != null && choice.isAvailable(context)) {
                     availableChoices.add(choice);
                 }

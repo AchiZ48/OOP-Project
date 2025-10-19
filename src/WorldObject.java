@@ -2,7 +2,7 @@ import java.awt.*;
 import java.io.Serializable;
 import java.util.EnumMap;
 
-abstract class WorldObject implements Interactable, Serializable {
+abstract class WorldObject implements WorldObjectManager.Interactable, Serializable {
     final String id;
     final String type;
     private final EnumMap<StateFlag, Boolean> flags = new EnumMap<>(StateFlag.class);
@@ -124,7 +124,7 @@ abstract class WorldObject implements Interactable, Serializable {
     }
 
     @Override
-    public void interact(InteractionContext context) {
+    public void interact(WorldObjectManager.InteractionContext context) {
         if (!isActive()) {
             onInactiveInteract(context);
             return;
@@ -132,13 +132,13 @@ abstract class WorldObject implements Interactable, Serializable {
         onInteract(context);
     }
 
-    protected void onInactiveInteract(InteractionContext context) {
+    protected void onInactiveInteract(WorldObjectManager.InteractionContext context) {
         if (context != null && prompt != null && !prompt.isEmpty()) {
             context.queueMessage(prompt);
         }
     }
 
-    protected abstract void onInteract(InteractionContext context);
+    protected abstract void onInteract(WorldObjectManager.InteractionContext context);
 
     void draw(Graphics2D g) {
         if (!isActive()) {

@@ -10,7 +10,7 @@ class HudRenderer {
         this.statsMenu = statsMenu;
     }
 
-    void draw(Graphics2D g, Interactable highlighted, boolean dialogActive, boolean fastTravelMenuOpen) {
+    void draw(Graphics2D g, WorldObjectManager.Interactable highlighted, boolean dialogActive, boolean fastTravelMenuOpen) {
         List<Player> party = gamePanel.party;
         if (party == null || party.isEmpty()) {
             return;
@@ -24,9 +24,9 @@ class HudRenderer {
         String goldText = "Gold: " + gamePanel.getGold();
         String essenceText = "Essence: " + gamePanel.getEssence();
         String keyText = "Boss Keys: " + gamePanel.getBossKeys() + "/" + gamePanel.getBossKeysRequired();
-        if(gamePanel.hasRequiredBossKeys()){
+        if (gamePanel.hasRequiredBossKeys()) {
             keyText = "Press B to fight boss";
-        }else{
+        } else {
             keyText = "Boss Keys: " + gamePanel.getBossKeys() + "/" + gamePanel.getBossKeysRequired();
         }
         Player leader = party.get(gamePanel.activeIndex);
@@ -111,7 +111,7 @@ class HudRenderer {
         Color keyColor = gamePanel.hasRequiredBossKeys() ? new Color(150, 255, 170) : new Color(255, 200, 150);
         g.setColor(keyColor);
         g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 16));
-        g.drawString(keyText, (640/2) -(fm.stringWidth(keyText)/2), 20);
+        g.drawString(keyText, (640 / 2) - (fm.stringWidth(keyText) / 2), 20);
         g.drawString(String.valueOf(gamePanel.getCooldown()), textX, textY + 10);
     }
 
@@ -141,7 +141,7 @@ class HudRenderer {
         }
     }
 
-    private void drawInteractionPrompt(Graphics2D g, Interactable highlighted) {
+    private void drawInteractionPrompt(Graphics2D g, WorldObjectManager.Interactable highlighted) {
         if (highlighted == null) {
             return;
         }

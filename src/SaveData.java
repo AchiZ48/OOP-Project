@@ -44,7 +44,7 @@ class SaveData implements Serializable {
 
         QuestManager questManager = gp.getQuestManager();
         if (questManager != null) {
-            for (Quest quest : questManager.getQuests()) {
+            for (QuestManager.Quest quest : questManager.getQuests()) {
                 if (quest == null || quest.id == null) {
                     continue;
                 }
@@ -83,7 +83,7 @@ class SaveData implements Serializable {
         String id;
         String name;
         String description;
-        QuestStatus status;
+        QuestManager.Status status;
         int rewardGold;
     }
 
@@ -134,20 +134,20 @@ class SaveData implements Serializable {
                 }
             }
 
-            if (object instanceof ChestObject chest) {
+            if (object instanceof WorldObjectFactory.ChestObject chest) {
                 data.chestGold = chest.getBaseGold();
                 data.chestEssence = chest.getBaseEssence();
                 data.chestGrantsKey = chest.grantsBossKey();
-            } else if (object instanceof DoorObject door) {
+            } else if (object instanceof WorldObjectFactory.DoorObject door) {
                 data.doorLocked = door.isLocked();
                 data.doorOpen = door.isOpen();
-            } else if (object instanceof FastTravelPoint point) {
+            } else if (object instanceof WorldObjectFactory.FastTravelPoint point) {
                 data.pointId = point.getPointId();
                 data.displayName = point.getDisplayName();
                 data.unlockCost = point.getUnlockCost();
                 data.travelCost = point.getTravelCost();
                 data.fastTravelUnlocked = point.isUnlocked();
-            } else if (object instanceof SkillTrainerObject trainer) {
+            } else if (object instanceof WorldObjectFactory.SkillTrainerObject trainer) {
                 data.stationName = trainer.getStationName();
             }
             return data;
@@ -191,14 +191,14 @@ class SaveData implements Serializable {
                 rebuilt.setFlag(flag, flags.contains(flag));
             }
 
-            if (rebuilt instanceof DoorObject door) {
+            if (rebuilt instanceof WorldObjectFactory.DoorObject door) {
                 if (doorLocked != null) {
                     door.setLocked(doorLocked);
                 }
                 if (doorOpen != null) {
                     door.setOpenState(doorOpen);
                 }
-            } else if (rebuilt instanceof FastTravelPoint point) {
+            } else if (rebuilt instanceof WorldObjectFactory.FastTravelPoint point) {
                 if (fastTravelUnlocked != null) {
                     point.setUnlocked(fastTravelUnlocked);
                 }
