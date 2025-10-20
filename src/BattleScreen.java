@@ -594,7 +594,6 @@ public class BattleScreen {
             double scale = Math.min(1.0, Math.min(EnemySpriteBoxW / (double) frameW, EnemySpriteBoxH / (double) frameH));
             int drawW = Math.max(1, (int) Math.round(frameW * scale));
             int drawH = Math.max(1, (int) Math.round(frameH * scale));
-            System.out.println(frameH + " " + drawH);
             int drawX = EnemySpriteAnchorX + 30;
             int drawY = EnemySpriteBaseY - drawH;
             EnemySprite.draw(g, drawX, drawY, drawW, drawH);
