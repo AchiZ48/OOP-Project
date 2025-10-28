@@ -5,7 +5,7 @@ import java.io.IOException;
 class TitleScreen {
     GamePanel gp;
     BufferedImage backgroundImage;
-    String path = "resources/title/title2.png";
+    String path = "resources/title/title.png";
 
     public TitleScreen(GamePanel gp) {
         this.gp = gp;
@@ -35,7 +35,6 @@ class TitleScreen {
         // Title text
         g.setColor(Color.WHITE);
         g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 32));
-        drawCenteredString(g, "Solstice Warriors", gp.vw / 2, gp.vh - 48);
 
         if (gp != null && gp.isGameCompleted()) {
             g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 26));
@@ -43,8 +42,8 @@ class TitleScreen {
         }
 
         // Subtitle
-        g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 16));
-        drawCenteredString(g, "Press ENTER to Start", gp.vw / 2, gp.vh - 80);
+        g.setFont(FontCustom.MainFont.deriveFont(Font.PLAIN, 20));
+        drawCenteredString(g, "Press ENTER to Start", gp.vw / 2, gp.vh/2 + 50);
 
         // Footer/edition label
         g.setColor(Color.LIGHT_GRAY);

@@ -256,8 +256,8 @@ class WorldObjectManager {
         }
 
         private Rectangle createActorBounds(Player actor) {
-            int w = Math.max(1, actor.w);
-            int h = Math.max(1, actor.h);
+            int w = Math.max(1, actor.getW());
+            int h = Math.max(1, actor.getH());
             int x = (int) Math.round(actor.getPreciseX());
             int y = (int) Math.round(actor.getPreciseY());
             return new Rectangle(x, y, w, h);

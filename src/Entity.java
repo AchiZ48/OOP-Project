@@ -6,7 +6,7 @@ public abstract class Entity implements Serializable {
     String name;
     double x, y;
     int w, h;
-    double posX, posY;
+    private double posX, posY;
     Sprite sprite;
 
     abstract void update(double dt);
@@ -18,7 +18,9 @@ public abstract class Entity implements Serializable {
         this.y = Math.floor(py);
         this.posY = py - this.y;
     }
-
+    String getName() {
+        return name;
+    }
 
     double getPreciseX() {
         return x + posX;
@@ -28,6 +30,9 @@ public abstract class Entity implements Serializable {
         return y + posY;
     }
 
+    int getW(){ return w;}
+
+    int getH(){ return h;}
 
     void draw(Graphics2D g, Camera cam) {
         if (sprite == null) return;

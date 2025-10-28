@@ -8,7 +8,6 @@ public class Camera {
     private double fracX = 0.0;
     private double fracY = 0.0;
     private final double smooth = 8.0;
-    // Zoom properties
     private double zoom = 1.0;
     private double targetZoom = 1.0;
     private final double minZoom = 0.5;

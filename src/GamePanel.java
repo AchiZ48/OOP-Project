@@ -58,6 +58,7 @@ public class GamePanel extends JPanel {
     private boolean gameCompleted = false;
     private int pauseSelection = 0;
     private String lastSaveName = null;
+    private Runnable fullscreenToggleHandler;
 
     public GamePanel(int virtualWidth, int virtualHeight) {
         this.vw = virtualWidth;
@@ -67,28 +68,27 @@ public class GamePanel extends JPanel {
         FontCustom.loadFonts();
         worldBackBuffer = new BufferedImage(vw, vh, BufferedImage.TYPE_INT_ARGB);
         input = new InputManager(this);
-
-        // Load tilemap with better error handling
         try {
             map = TileMap.loadFromTMX("tiles/map.tmx");
             System.out.println("TMX map loaded successfully");
         } catch (Exception e) {
             System.out.println("TMX load failed (using placeholder): " + e.getMessage());
         }
-
         camera = new Camera(vw, vh, map);
         createDefaultParty();
-
         titleScreen = new TitleScreen(this);
         saveMenu = new SaveMenuScreen(this);
         battleScreen = new BattleScreen(this);
         worldObjectManager = new WorldObjectManager(this);
         spawnInitialObjects();
         playAmbientTrack(currentAmbientTrack);
-
         addHierarchyListener(e -> {
             if (isDisplayable()) requestFocusInWindow();
         });
+    }
+
+    public void setFullscreenToggleHandler(Runnable fullscreenToggleHandler) {
+        this.fullscreenToggleHandler = fullscreenToggleHandler;
     }
 
     void createDefaultEnemies() {
@@ -214,6 +214,12 @@ public class GamePanel extends JPanel {
     void updateInput() {
         boolean dialogActive = dialogManager.isActive();
 
+        if (input.consumeIfPressed("F11")) {
+            if (fullscreenToggleHandler != null) {
+                fullscreenToggleHandler.run();
+            }
+        }
+
         if (skillMenu.isOpen()) {
             skillMenu.update();
             return;
@@ -326,7 +332,7 @@ public class GamePanel extends JPanel {
             activeIndex = index;
             Player leader = party.get(activeIndex);
             camera.followEntity(leader);
-            System.out.println("Switched to " + leader.name);
+            System.out.println("Switched to " + leader.getName());
         }
     }
 
@@ -504,7 +510,7 @@ public class GamePanel extends JPanel {
         if (!dialogActive && !fastTravelMenuOpen && !showPauseOverlay) {
             if (ambushManager.tryTrigger(leader, map, dt)) {
                 queueWorldMessage("Ambushed!");
-                int zoneId = map.getZone((int) (leader.x / 32), (int) (leader.y / 32));
+                int zoneId = map.getZone((int) (leader.getPreciseX() / 32), (int) (leader.getPreciseY() / 32));
                 System.out.println(zoneId);
                 startRandomEncounter(true, zoneId);
                 return;
@@ -637,15 +643,15 @@ public class GamePanel extends JPanel {
         double targetX = destination.getX();
         double targetY = destination.getY();
 
-        targetX = Math.max(0.0, Math.min(map.pixelWidth - leader.w, targetX));
-        targetY = Math.max(0.0, Math.min(map.pixelHeight - leader.h, targetY));
+        targetX = Math.max(0.0, Math.min(map.pixelWidth - leader.getW(), targetX));
+        targetY = Math.max(0.0, Math.min(map.pixelHeight - leader.getH(), targetY));
         leader.setPrecisePosition(targetX, targetY);
 
         double spacing = 36.0;
         for (int i = 1; i < party.size(); i++) {
             Player member = party.get((activeIndex + i) % party.size());
-            double offsetX = Math.max(0.0, Math.min(map.pixelWidth - member.w, targetX - i * spacing));
-            double offsetY = Math.max(0.0, Math.min(map.pixelHeight - member.h, targetY + i * 6));
+            double offsetX = Math.max(0.0, Math.min(map.pixelWidth - member.getW(), targetX - i * spacing));
+            double offsetY = Math.max(0.0, Math.min(map.pixelHeight - member.getH(), targetY + i * 6));
             member.setPrecisePosition(offsetX, offsetY);
         }
 
@@ -1536,7 +1542,7 @@ public class GamePanel extends JPanel {
                         continue;
                     }
                     NPC drawNpc = npc;
-                    renderQueue.add(new DepthRenderable(drawNpc.getPreciseY() + drawNpc.h,
+                    renderQueue.add(new DepthRenderable(drawNpc.getPreciseY() + drawNpc.getH(),
                             graphics -> drawNpc.draw(graphics, camera)));
                 }
             }
@@ -1547,7 +1553,7 @@ public class GamePanel extends JPanel {
                         continue;
                     }
                     Player drawPlayer = player;
-                    renderQueue.add(new DepthRenderable(drawPlayer.getPreciseY() + drawPlayer.h,
+                    renderQueue.add(new DepthRenderable(drawPlayer.getPreciseY() + drawPlayer.getH(),
                             graphics -> drawPlayer.draw(graphics, camera)));
                 }
             }

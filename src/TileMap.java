@@ -13,15 +13,11 @@ import java.util.List;
 import java.util.Map;
 
 public class TileMap {
-    // ======== constants for Tiled flip flags ========
     private static final long GID_MASK = 0x0FFFFFFFL;
     private final List<Layer> backgroundLayers = new ArrayList<>();
     private final List<Layer> foregroundLayers = new ArrayList<>();
-
-    // ======== internal: layer buckets แบบใหม่ ========
     private final List<Layer> collisionLayers = new ArrayList<>();
     private final List<Layer> zoneLayers = new ArrayList<>();
-    // ======== public fields (คงชื่อเดิมไว้ให้เข้ากับโค้ดเก่า) ========
     int tileW, tileH, cols, rows, pixelWidth, pixelHeight;
     boolean decorationVisible;
     List<TilesetEntry> tilesets = new ArrayList<>();

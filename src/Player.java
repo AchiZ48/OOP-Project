@@ -18,7 +18,6 @@ class Player extends Entity {
         this.w = 32;
         this.h = 64;
         this.stats = Stats.createDefault();
-
         applyFacingToSprite();
     }
 

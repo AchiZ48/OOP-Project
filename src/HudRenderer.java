@@ -42,7 +42,7 @@ class HudRenderer {
         int currencyBottomMargin = 8;
         int currencyY = gamePanel.vh - currencyPanelHeight - currencyBottomMargin;
         String zoneName;
-        switch (gamePanel.map.getZone((int) (leader.x / 32), (int) (leader.y / 32))) {
+        switch (gamePanel.map.getZone((int) (leader.getPreciseX() / 32), (int) (leader.getPreciseY() / 32))) {
             case 0:
                 zoneName = "Safe";
                 break;
@@ -192,8 +192,8 @@ class HudRenderer {
         int textY = y + fm.getAscent() + 2;
         g.setColor(Color.WHITE);
         String header = stats != null
-                ? String.format("%s                     Lv%02d", player.name, stats.getLevel())
-                : player.name;
+                ? String.format("%s                     Lv%02d", player.getName(), stats.getLevel())
+                : player.getName();
         g.drawString(header, textX, textY);
         textY += 3;
 

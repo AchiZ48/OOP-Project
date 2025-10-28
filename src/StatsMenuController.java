@@ -130,7 +130,7 @@ class StatsMenuController {
                 g.fillRoundRect(textX - 8, rowY - 4, listWidth + 16, itemMetrics.getHeight() + 8, 10, 10);
             }
             g.setColor(selectedRow ? Color.WHITE : new Color(210, 210, 210));
-            g.drawString(party.get(i).name, textX, baseline);
+            g.drawString(party.get(i).getName(), textX, baseline);
         }
 
         int panelX = textX + listWidth + 28;
@@ -142,7 +142,7 @@ class StatsMenuController {
 
         g.setColor(Color.WHITE);
         int infoBaseline = panelY + itemMetrics.getAscent();
-        g.drawString(String.format("Name: %s", selected.name), panelX, infoBaseline);
+        g.drawString(String.format("Name: %s", selected.getName()), panelX, infoBaseline);
         infoBaseline += itemMetrics.getHeight();
         g.drawString(String.format("Level %02d", stats.getLevel()), panelX, infoBaseline);
         infoBaseline += itemMetrics.getHeight();

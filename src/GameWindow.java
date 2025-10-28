@@ -10,11 +10,17 @@ public class GameWindow {
     final int virtualHeight = 360;
     JFrame frame;
     GamePanel panel;
+    private boolean fullscreen = false;
+    private Rectangle windowedBounds;
+    private final GraphicsDevice graphicsDevice;
 
     public GameWindow() {
+        GraphicsEnvironment environment = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        graphicsDevice = environment.getDefaultScreenDevice();
         frame = new JFrame("Solstice Warriors DEMO");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         panel = new GamePanel(virtualWidth, virtualHeight);
+        panel.setFullscreenToggleHandler(this::toggleFullscreen);
         frame.setContentPane(panel);
         frame.setSize(960, 640);
         frame.setLocationRelativeTo(null);
@@ -24,8 +30,6 @@ public class GameWindow {
                 panel.onWindowResize();
             }
         });
-
-        // Ensure clean shutdown
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -38,5 +42,55 @@ public class GameWindow {
     public void show() {
         frame.setVisible(true);
         panel.start();
+    }
+
+    private void setFullscreen(boolean enable) {
+        if (fullscreen == enable) {
+            return;
+        }
+
+        if (enable) {
+            windowedBounds = frame.getBounds();
+            frame.dispose();
+            frame.setUndecorated(true);
+            frame.setResizable(false);
+            frame.setContentPane(panel);
+            frame.setVisible(true);
+            if (graphicsDevice != null && graphicsDevice.isFullScreenSupported()) {
+                graphicsDevice.setFullScreenWindow(frame);
+            } else {
+                frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+            }
+        } else {
+            if (graphicsDevice != null && graphicsDevice.getFullScreenWindow() == frame) {
+                graphicsDevice.setFullScreenWindow(null);
+            }
+            frame.dispose();
+            frame.setUndecorated(false);
+            frame.setResizable(true);
+            frame.setContentPane(panel);
+            if (windowedBounds != null) {
+                frame.setBounds(windowedBounds);
+            } else {
+                frame.setSize(960, 640);
+                frame.setLocationRelativeTo(null);
+            }
+            frame.setExtendedState(JFrame.NORMAL);
+            frame.setVisible(true);
+        }
+
+        fullscreen = enable;
+        frame.revalidate();
+        frame.repaint();
+        panel.onWindowResize();
+        SwingUtilities.invokeLater(panel::requestFocusInWindow);
+    }
+
+    private void toggleFullscreen() {
+        if (SwingUtilities.isEventDispatchThread()) {
+            setFullscreen(!fullscreen);
+        } else {
+            SwingUtilities.invokeLater(() -> setFullscreen(!fullscreen));
+        }
     }
 }
